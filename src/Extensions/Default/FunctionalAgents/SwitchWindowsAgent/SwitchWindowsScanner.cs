@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="SwitchWindowsScanner.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,13 +18,7 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Drawing;
-using System.Linq;
-using System.Security.Permissions;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.ActuatorManagement;
 using ACAT.Lib.Core.AgentManagement;
 using ACAT.Lib.Core.Extensions;
@@ -35,41 +29,12 @@ using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Core.WidgetManagement;
 using ACAT.Lib.Core.Widgets;
 using ACAT.Lib.Extension;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
+using System.Security.Permissions;
+using System.Windows.Forms;
 
 namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
 {
@@ -99,24 +64,14 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
         private readonly KeyboardActuator _keyboardActuator;
 
         /// <summary>
-        /// Status bar for the scanner form
+        /// The scannercommon object
         /// </summary>
-        private readonly StatusBar _statusBar = new StatusBar();
-
-        /// <summary>
-        /// Displays the state of the Alt key
-        /// </summary>
-        private readonly StatusBarPanel _statusBarPanelSort = new StatusBarPanel();
+        private readonly ScannerCommon _scannerCommon;
 
         /// <summary>
         /// List of all windows
         /// </summary>
         private List<EnumWindows.WindowInfo> _allWindowsList;
-
-        /// <summary>
-        /// Scanner to which this form is docked
-        /// </summary>
-        private Form _dockedWithForm;
 
         /// <summary>
         /// Entres per page
@@ -142,11 +97,6 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
         /// Index into the list of the first entry in the current page
         /// </summary>
         private int _pageStartIndex;
-
-        /// <summary>
-        /// The scannercommon object
-        /// </summary>
-        private ScannerCommon _scannerCommon;
 
         /// <summary>
         /// Widget that the user clicks to resort
@@ -184,6 +134,8 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
         /// </summary>
         public SwitchWindowsScanner()
         {
+            _scannerCommon = new ScannerCommon(this);
+
             InitializeComponent();
 
             PanelClass = "SwitchWindowsScanner";
@@ -197,7 +149,6 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
 
             FormClosing += SwitchWindowsScanner_FormClosing;
             KeyDown += SwitchWindowsScanner_KeyDown;
-            LocationChanged += OnLocationChanged;
 
             var actuator = ActuatorManager.Instance.GetActuator(typeof(KeyboardActuator));
             if (actuator is KeyboardActuator)
@@ -208,7 +159,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
 
             _dispatcher = new RunCommandDispatcher(this);
 
-            createStatusBar();
+            statusStrip1.SizingGrip = false;
         }
 
         /// <summary>
@@ -284,6 +235,11 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
         public String PanelClass { get; private set; }
 
         /// <summary>
+        /// Gets the PanelCommon object
+        /// </summary>
+        public IPanelCommon PanelCommon { get { return _scannerCommon; } }
+
+        /// <summary>
         /// Gets the scanner common object
         /// </summary>
         public ScannerCommon ScannerCommon
@@ -324,35 +280,35 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
         /// to determine the 'enabled' state.
         /// </summary>
         /// <param name="arg">info about the scanner button</param>
-        public bool CheckWidgetEnabled(CheckEnabledArgs arg)
+        public bool CheckCommandEnabled(CommandEnabledArg arg)
         {
             arg.Handled = true;
 
-            switch (arg.Widget.SubClass)
+            switch (arg.Command)
             {
-                case "PreviousPage":
+                case "CmdPrevPage":
                     arg.Enabled = (_pageNumber != 0);
                     break;
 
-                case "NextPage":
+                case "CmdNextPage":
                     arg.Enabled = (_numPages != 0 && (_pageNumber + 1) != _numPages);
                     break;
 
                 case "Back":
-                case "DeletePreviousWord":
-                case "ClearFilter":
+                case "CmdDeletePrevWord":
+                case "WindowListClearFilter":
                     arg.Handled = true;
                     arg.Enabled = !IsFilterEmpty();
                     break;
 
-                case "Sort":
-                case "Search":
+                case "WindowListSort":
+                case "WindowListSearch":
                     arg.Handled = true;
                     arg.Enabled = (_windowsList != null && _windowsList.Any());
                     break;
 
-                case "PrevChar":
-                case "NextChar":
+                case "CmdPrevChar":
+                case "CmdNextChar":
                     arg.Handled = true;
                     arg.Enabled = true;
                     break;
@@ -370,30 +326,13 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
         /// </summary>
         public void ClearFilter()
         {
-            Invoke(new MethodInvoker(delegate()
+            Invoke(new MethodInvoker(delegate
+            {
+                if (SearchFilter.Text.Length > 0 && DialogUtils.ConfirmScanner("Clear filter?"))
                 {
-                    if (SearchFilter.Text.Length > 0 && DialogUtils.ConfirmScanner("Clear filter?"))
-                    {
-                        SearchFilter.Text = String.Empty;
-                    }
-                }));
-        }
-
-        /// <summary>
-        /// Creates a status bar for the scanner
-        /// </summary>
-        public void createStatusBar()
-        {
-            _statusBarPanelSort.BorderStyle = StatusBarPanelBorderStyle.None;
-            _statusBarPanelSort.AutoSize = StatusBarPanelAutoSize.Contents;
-            _statusBar.Panels.Add(_statusBarPanelSort);
-
-            _statusBar.SizingGrip = false;
-            _statusBar.ShowPanels = true;
-            _statusBar.Height = 30;
-            _statusBar.Margin = new Padding(4, 4, 4, 4);
-            _statusBar.Font = new Font("Arial", 16.0f);
-            Controls.Add(_statusBar);
+                    SearchFilter.Text = String.Empty;
+                }
+            }));
         }
 
         /// <summary>
@@ -412,7 +351,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
         /// <returns></returns>
         public bool Initialize(StartupArg startupArg)
         {
-            _scannerCommon = new ScannerCommon(this) { PositionSizeController = { AutoPosition = true } };
+            _scannerCommon.PositionSizeController.AutoPosition = true;
 
             if (!_scannerCommon.Initialize(startupArg))
             {
@@ -420,8 +359,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
                 return false;
             }
 
-            PanelManager.Instance.EvtScannerShow += Instance_EvtScannerShow;
-            PanelManager.Instance.EvtScannerClosed += Instance_EvtScannerClosed;
+            Windows.EvtWindowPositionChanged += Windows_EvtWindowPositionChanged;
 
             return true;
         }
@@ -433,10 +371,11 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
         public bool IsFilterEmpty()
         {
             bool retVal = true;
-            Invoke(new MethodInvoker(delegate()
+            Invoke(new MethodInvoker(delegate
             {
                 retVal = (SearchFilter.Text.Length == 0);
             }));
+
             return retVal;
         }
 
@@ -453,7 +392,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
         /// </summary>
         public void OnPause()
         {
-            _scannerCommon.GetAnimationManager().Pause();
+            PanelCommon.AnimationManager.Pause();
         }
 
         /// <summary>
@@ -471,7 +410,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
         /// </summary>
         public void OnResume()
         {
-            _scannerCommon.GetAnimationManager().Resume();
+            _scannerCommon.PositionSizeController.AutoSetPosition();
+
+            PanelCommon.AnimationManager.Resume();
         }
 
         /// <summary>
@@ -503,6 +444,16 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
         }
 
         /// <summary>
+        /// Size of the client changed
+        /// </summary>
+        /// <param name="e">event args</param>
+        protected override void OnClientSizeChanged(EventArgs e)
+        {
+            base.OnClientSizeChanged(e);
+            _scannerCommon.OnClientSizeChanged();
+        }
+
+        /// <summary>
         /// Release resources
         /// </summary>
         /// <param name="e">args</param>
@@ -511,8 +462,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
             _scannerCommon.OnFormClosing(e);
             removeWatchdogs();
 
-            PanelManager.Instance.EvtScannerShow -= Instance_EvtScannerShow;
-            PanelManager.Instance.EvtScannerClosed -= Instance_EvtScannerClosed;
+            Windows.EvtWindowPositionChanged -= Windows_EvtWindowPositionChanged;
 
             _keyboardActuator.EvtKeyPress -= _keyboardActuator_EvtKeyPress;
             base.OnFormClosing(e);
@@ -569,9 +519,23 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
         /// <param name="scanner">the scanner form</param>
         private void dockToScanner(Form scanner)
         {
+            if (!Windows.GetVisible(this))
+            {
+                return;
+            }
+
             if (scanner is IScannerPanel)
             {
-                Windows.DockWithScanner(this, scanner, Context.AppWindowPosition);
+                if (((IPanel)scanner).PanelCommon.DisplayMode != DisplayModeTypes.Popup)
+                {
+                    Windows.DockWithScanner(this, scanner, Context.AppWindowPosition);
+                    Windows.SetTopMost(scanner);
+                }
+            }
+
+            if (Left < 0)
+            {
+                Left = 0;
             }
         }
 
@@ -644,9 +608,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
         /// </summary>
         private void getWidgets()
         {
-            _sortOrderWidget = _scannerCommon.GetRootWidget().Finder.FindChild("SortOrderIcon");
-            _pageNumberWidget = _scannerCommon.GetRootWidget().Finder.FindChild("PageNumber");
-            _sortButton = _scannerCommon.GetRootWidget().Finder.FindChild("ButtonSort");
+            _sortOrderWidget = PanelCommon.RootWidget.Finder.FindChild("SortOrderIcon");
+            _pageNumberWidget = PanelCommon.RootWidget.Finder.FindChild("PageNumber");
+            _sortButton = PanelCommon.RootWidget.Finder.FindChild("ButtonSort");
         }
 
         /// <summary>
@@ -683,7 +647,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
                 IntPtr desktopHWnd = User32Interop.GetDesktopWindow();
                 if (desktopHWnd != null)
                 {
-                    sortedList.Insert(0, new EnumWindows.WindowInfo(desktopHWnd, "Show Desktop"));
+                    sortedList.Insert(0, new EnumWindows.WindowInfo(desktopHWnd, R.GetString("ShowDesktop")));
                 }
             }
 
@@ -698,7 +662,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
             if (_pageNumber < _numPages - 1)
             {
                 int index = _pageStartIndex + _entriesPerPage;
-                if (index < _windowsList.Count())
+                if (index < _windowsList.Count)
                 {
                     _pageStartIndex += _entriesPerPage;
                     _pageNumber++;
@@ -755,11 +719,11 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
                         switchSortOrder();
                         break;
 
-                    case "@WindowListNextPage":
+                    case "@CmdNextPage":
                         gotoNextPage();
                         break;
 
-                    case "@WindowListPrevPage":
+                    case "@CmdPrevPage":
                         gotoPreviousPage();
                         break;
 
@@ -790,9 +754,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
         {
             if (!User32Interop.IsWindow(wInfo.Handle) || !User32Interop.IsWindowVisible(wInfo.Handle))
             {
-                DialogUtils.ShowTimedDialog(this, "Window does not exist");
+                DialogUtils.ShowTimedDialog(this, R.GetString("WindowNotFound"));
             }
-            else if (DialogUtils.ConfirmScanner("Switch to " + wInfo.Title + "?"))
+            else if (DialogUtils.ConfirmScanner(String.Format(R.GetString("ConfirmSwitchToWindow"), wInfo.Title)))
             {
                 if (EvtActivateWindow != null)
                 {
@@ -806,40 +770,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
         /// </summary>
         private void highlightOff()
         {
-            _scannerCommon.GetRootWidget().HighlightOff();
-        }
-
-        /// <summary>
-        /// Event handler for when a scanner closes.  Reposition this scanner
-        /// to its default position. This event is raised by the Panel Manager
-        /// </summary>
-        /// <param name="sender">event sender</param>
-        /// <param name="arg">event args</param>
-        private void Instance_EvtScannerClosed(object sender, ScannerCloseEventArg arg)
-        {
-            if (arg.Scanner != this)
-            {
-                if (_dockedWithForm == arg.Scanner)
-                {
-                    _dockedWithForm = null;
-                }
-                _scannerCommon.PositionSizeController.AutoSetPosition();
-            }
-        }
-
-        /// <summary>
-        /// Invoked by the Panel Manager when a scanner is shown
-        /// Dock this form to the scanner
-        /// </summary>
-        /// <param name="sender">event sender</param>
-        /// <param name="e">event args</param>
-        private void Instance_EvtScannerShow(object sender, ScannerShowEventArg arg)
-        {
-            if (arg.Scanner != this)
-            {
-                _dockedWithForm = arg.Scanner.Form;
-                dockToScanner(arg.Scanner.Form);
-            }
+            PanelCommon.RootWidget.HighlightOff();
         }
 
         /// <summary>
@@ -858,29 +789,15 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
         }
 
         /// <summary>
-        /// Don't let the window move. Re-dock it to
-        /// the companian scanner
-        /// </summary>
-        /// <param name="sender">event sender</param>
-        /// <param name="e">event args</param>
-        private void OnLocationChanged(object sender, EventArgs eventArgs)
-        {
-            if (_dockedWithForm != null)
-            {
-                dockToScanner(_dockedWithForm);
-            }
-        }
-
-        /// <summary>
         /// Refresh the list of windows in the UI
         ///
         /// </summary>
         private void refreshWindowList()
         {
             var list = new List<Widget>();
-            _scannerCommon.GetRootWidget().Finder.FindChild(typeof(TabStopScannerButton), list);
+            PanelCommon.RootWidget.Finder.FindChild(typeof(TabStopScannerButton), list);
 
-            int count = list.Count();
+            int count = list.Count;
             if (count == 0)
             {
                 return;
@@ -894,7 +811,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
 
             // calculate how many pages, number of entries per page
             _entriesPerPage = count;
-            _numPages = _windowsList.Count() / _entriesPerPage;
+            _numPages = _windowsList.Count / _entriesPerPage;
 
             if ((_windowsList.Count() % _entriesPerPage) != 0)
             {
@@ -908,7 +825,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
             if (!_windowsList.Any())
             {
                 (list[0] as TabStopScannerButton).SetTabStops(0.0f, new float[] { 100 });
-                list[0].SetText("------------- NO ACTIVE WINDOWS -------------");
+                list[0].SetText(R.GetString("NoActiveWindows"));
                 return;
             }
 
@@ -927,7 +844,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
 
                 var str = getMeasuredString(graphics,
                                             tabStopScannerButton.UIControl.Font,
-                                            ClientSize.Width - 30,
+                                            tabStopScannerButton.Width,
                                             _windowsList[jj].Title);
 
                 list[ii].SetText(str);
@@ -966,8 +883,8 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
         /// <summary>
         /// Set the sytle of this form
         /// </summary>
-        /// <param name="createParams"></param>
-        /// <returns></returns>
+        /// <param name="createParams">window create params</param>
+        /// <returns>modified params</returns>
         private CreateParams setFormStyles(CreateParams createParams)
         {
             createParams.ExStyle |= Windows.WindowStyleFlags.WS_EX_COMPOSITED;
@@ -1056,7 +973,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
             _scannerCommon.OnLoad();
 
             var list = new List<Widget>();
-            _scannerCommon.GetRootWidget().Finder.FindChild(typeof(TabStopScannerButton), list);
+            PanelCommon.RootWidget.Finder.FindChild(typeof(TabStopScannerButton), list);
 
             _tabStopButtonCount = list.Count;
 
@@ -1068,7 +985,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
 
             loadWindowList();
 
-            _scannerCommon.GetRootWidget().HighlightOff();
+            PanelCommon.RootWidget.HighlightOff();
 
             var panel = PanelManager.Instance.GetCurrentPanel();
             if (panel != null)
@@ -1076,7 +993,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
                 dockToScanner(panel as Form);
             }
 
-            _scannerCommon.GetAnimationManager().Start(_scannerCommon.GetRootWidget());
+            PanelCommon.AnimationManager.Start(PanelCommon.RootWidget);
         }
 
         /// <summary>
@@ -1124,7 +1041,8 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
 
             if (_pageNumberWidget != null)
             {
-                text = _windowsList.Any() ? "Page " + (_pageNumber + 1) + " of " + _numPages : String.Empty;
+                var str = String.Format(R.GetString("PageNofM"), (_pageNumber + 1), _numPages);
+                text = _windowsList.Any() ? str : String.Empty;
                 _pageNumberWidget.SetText(text);
             }
         }
@@ -1138,22 +1056,36 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
 
             if (!_windowsList.Any())
             {
-                _statusBarPanelSort.Text = String.Empty;
+                toolStripStatusLabel.Text = String.Empty;
                 return;
             }
 
             switch (_sortOrder)
             {
                 case SortOrder.Ascending:
-                    text = "Sort Order:  ALPHABETICAL";
+                    text = R.GetString("SortOrderAlphabetical");
                     break;
 
                 case SortOrder.Descending:
-                    text = "Sort Order:  REVERSE ALPHABETICAL";
+                    text = R.GetString("SortOrderReverseAlphabetical");
                     break;
             }
 
-            _statusBarPanelSort.Text = text;
+            toolStripStatusLabel.Text = text;
+        }
+
+        /// <summary>
+        /// Position of the scanner changed.  If there is a companion
+        /// scanner, dock to it
+        /// </summary>
+        /// <param name="form">the form</param>
+        /// <param name="position">its position</param>
+        private void Windows_EvtWindowPositionChanged(Form form, Windows.WindowPosition position)
+        {
+            if (form != this)
+            {
+                dockToScanner(form);
+            }
         }
     }
 }

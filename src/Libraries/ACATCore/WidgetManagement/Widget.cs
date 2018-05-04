@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="Widget.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,52 +18,16 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
+using ACAT.Lib.Core.Interpreter;
+using ACAT.Lib.Core.ThemeManagement;
+using ACAT.Lib.Core.Utility;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using System.Xml;
-using ACAT.Lib.Core.Interpreter;
-using ACAT.Lib.Core.ThemeManagement;
-using ACAT.Lib.Core.Utility;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
 
 namespace ACAT.Lib.Core.WidgetManagement
 {
@@ -163,7 +127,9 @@ namespace ACAT.Lib.Core.WidgetManagement
 
             _children = new List<Widget>();
 
+            Visible = true;
             Value = String.Empty;
+            Command = String.Empty;
             SubClass = String.Empty;
             Panel = String.Empty;
 
@@ -173,6 +139,7 @@ namespace ACAT.Lib.Core.WidgetManagement
             _layout = null;
             Parent = null;
 
+            IsCommand = false;
             AddForAnimation = true;
             IsHighlightOn = false;
             DrawBorder = false;
@@ -321,6 +288,13 @@ namespace ACAT.Lib.Core.WidgetManagement
         /// Default color scheme can be overriden for a widget
         /// </summary>
         public ColorScheme Colors { get; set; }
+
+        /// <summary>
+        /// Gets the command (if any) associated with this widget.
+        /// All commands begin with the @ symbol.  If the value of
+        /// this widget begins with @, it is a command
+        /// </summary>
+        public String Command { get; internal set; }
 
         /// <summary>
         /// Returns all the contextual widgets.  Contextual widgets
@@ -553,6 +527,11 @@ namespace ACAT.Lib.Core.WidgetManagement
         }
 
         /// <summary>
+        /// Gets whether this widget has
+        /// </summary>
+        public bool IsCommand { get; internal set; }
+
+        /// <summary>
         /// Is the highlight on for this widget?
         /// </summary>
         public bool IsHighlightOn { get; protected set; }
@@ -645,6 +624,11 @@ namespace ACAT.Lib.Core.WidgetManagement
         /// Gets or sets the string value of the widget
         /// </summary>
         public String Value { get; set; }
+
+        /// <summary>
+        /// Gets or sets the visible attribute
+        /// </summary>
+        public virtual bool Visible { get; set; }
 
         /// <summary>
         ///  Gets the parent layout object
@@ -828,6 +812,7 @@ namespace ACAT.Lib.Core.WidgetManagement
                 Windows.SetVisible(UIControl, false);
             }
 
+            Visible = false;
             AddForAnimation = false;
         }
 
@@ -845,7 +830,7 @@ namespace ACAT.Lib.Core.WidgetManagement
             {
                 if (_layout.RootWidget.UIControl.InvokeRequired)
                 {
-                    _layout.RootWidget.UIControl.Invoke(new MethodInvoker(delegate()
+                    _layout.RootWidget.UIControl.Invoke(new MethodInvoker(delegate
                     {
                         highlightOff();
                     }));
@@ -933,7 +918,7 @@ namespace ACAT.Lib.Core.WidgetManagement
         {
             try
             {
-                _layout.RootWidget.UIControl.Invoke(new MethodInvoker(delegate()
+                _layout.RootWidget.UIControl.Invoke(new MethodInvoker(delegate
                 {
                     selectedHighlightOff();
                 }));
@@ -1007,6 +992,7 @@ namespace ACAT.Lib.Core.WidgetManagement
                 Windows.SetVisible(UIControl, true);
             }
 
+            Visible = true;
             AddForAnimation = true;
         }
 
@@ -1075,8 +1061,12 @@ namespace ACAT.Lib.Core.WidgetManagement
 
             if (!handled)
             {
-                UIControl.BackColor = BackgroundColor;
-                UIControl.ForeColor = ForegroundColor;
+                if (UIControl != null)
+                {
+                    UIControl.BackColor = BackgroundColor;
+                    UIControl.ForeColor = ForegroundColor;
+                }
+
                 foreach (Widget widget in _children)
                 {
                     widget.IsHighlightOn = false;
@@ -1106,8 +1096,11 @@ namespace ACAT.Lib.Core.WidgetManagement
 
             if (!handled)
             {
-                UIControl.BackColor = HighlightBackground;
-                UIControl.ForeColor = HighlightForegroundColor;
+                if (UIControl != null)
+                {
+                    UIControl.BackColor = HighlightBackground;
+                    UIControl.ForeColor = HighlightForegroundColor;
+                }
 
                 foreach (Widget widget in _children)
                 {
@@ -1211,8 +1204,11 @@ namespace ACAT.Lib.Core.WidgetManagement
         {
             IsSelectedHighlightOn = false;
 
-            UIControl.BackColor = BackgroundColor;
-            UIControl.ForeColor = ForegroundColor;
+            if (UIControl != null)
+            {
+                UIControl.BackColor = BackgroundColor;
+                UIControl.ForeColor = ForegroundColor;
+            }
 
             foreach (Widget widget in _children)
             {
@@ -1232,8 +1228,11 @@ namespace ACAT.Lib.Core.WidgetManagement
         {
             IsSelectedHighlightOn = true;
 
-            UIControl.BackColor = HighlightSelectedBackgroundColor;
-            UIControl.ForeColor = HighlightSelectedForegroundColor;
+            if (UIControl != null)
+            {
+                UIControl.BackColor = HighlightSelectedBackgroundColor;
+                UIControl.ForeColor = HighlightSelectedForegroundColor;
+            }
 
             foreach (Widget widget in _children)
             {

@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="PanelClasses.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,45 +19,32 @@
 ////////////////////////////////////////////////////////////////////////////
 
 using System;
-using System.Diagnostics.CodeAnalysis;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
 
 namespace ACAT.Lib.Core.PanelManagement
 {
+    /// <summary>
+    /// Categories of panels in ACAT
+    /// </summary>
+    public enum PanelCategory
+    {
+        Unknown = 0,
+
+        /// <summary>
+        /// Like the alphabet scanner, punctuations scanner 
+        /// </summary>
+        Scanner = 1,
+
+        /// <summary>
+        /// Dialogs like the Settings dialogs
+        /// </summary>
+        Dialog = 2,
+
+        /// <summary>
+        /// Menus
+        /// </summary>
+        Menu = 3,
+    }
+
     /// <summary>
     /// Represents types of common scanner types
     /// </summary>
@@ -115,17 +102,5 @@ namespace ACAT.Lib.Core.PanelManagement
         /// Scanner to enter Punctuations.
         /// </summary>
         public const String Punctuation = "Punctuation";
-
-        /// <summary>
-        /// The category of scanner
-        /// </summary>
-        public enum PanelCategory
-        {
-            Unknown = 0,
-            Scanner = 1,
-            Dialog = 2,
-            ContextualMenu = 3,
-            Menu = 4
-        }
     }
 }

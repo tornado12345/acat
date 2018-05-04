@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="AutoPostionScanner.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,47 +18,12 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Windows.Forms;
 using ACAT.Lib.Core.ActuatorManagement;
 using ACAT.Lib.Core.InputActuators;
 using ACAT.Lib.Core.Utility;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Windows.Forms;
+using ACAT.ACATResources;
 
 namespace ACAT.Lib.Core.PanelManagement
 {
@@ -103,7 +68,7 @@ namespace ACAT.Lib.Core.PanelManagement
         public AutoPositionScanner(Form form)
         {
             _form = form;
-            _timer = new Timer { Interval = CoreGlobals.AppPreferences.TabScanTime };
+            _timer = new Timer { Interval = CoreGlobals.AppPreferences.MenuDialogScanTime };
             _timer.Tick += _timer_Tick;
         }
 
@@ -139,9 +104,9 @@ namespace ACAT.Lib.Core.PanelManagement
         /// </summary>
         public void Start()
         {
-            _form.Invoke(new MethodInvoker(delegate()
+            _form.Invoke(new MethodInvoker(delegate
             {
-                _toastForm = new ToastForm("Click to stop", -1);
+                _toastForm = new ToastForm(R.GetString("TriggerToStop"), -1);
                 Windows.SetWindowPosition(_toastForm, Windows.WindowPosition.CenterScreen);
                 _toastForm.Show();
 

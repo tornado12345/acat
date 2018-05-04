@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="AlphabetScannerCommon.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,12 +18,7 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Security.Permissions;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.AgentManagement;
 using ACAT.Lib.Core.Audit;
 using ACAT.Lib.Core.PanelManagement;
@@ -32,41 +27,11 @@ using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Core.WidgetManagement;
 using ACAT.Lib.Core.Widgets;
 using ACAT.Lib.Extension.CommandHandlers;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Permissions;
+using System.Windows.Forms;
 
 namespace ACAT.Lib.Extension
 {
@@ -129,6 +94,7 @@ namespace ACAT.Lib.Extension
             _scannerPanel = scannerPanel;
             _form = scannerPanel.Form;
             Dispatcher = new CmdDispatcher(this, scannerPanel);
+            _scannerCommon = new ScannerCommon(_scannerPanel);
         }
 
         /// <summary>
@@ -165,6 +131,11 @@ namespace ACAT.Lib.Extension
         /// the PanelClass getter in the Alphabet scanner.
         /// </summary>
         public String PanelClass { get; private set; }
+
+        /// <summary>
+        /// Gets the PanelCommon object
+        /// </summary>
+        public IPanelCommon PanelCommon { get { return _scannerCommon; } }
 
         /// <summary>
         /// Gets the current setting of preview mode.
@@ -211,15 +182,30 @@ namespace ACAT.Lib.Extension
         public int WordPredictionWordCountMax { get; set; }
 
         /// <summary>
-        /// Checks if the widget in arg needs to be enabled or not
-        /// depending on the context.  Call this in the CheckWidgetEnabled
+        /// Autocompletes by selecting the first word in the
+        /// word prediciton list
+        /// </summary>
+        public void AutocompleteWithFirstWord()
+        {
+            List<Widget> list = new List<Widget>();
+            _rootWidget.Finder.FindAllChildren(typeof(WordListItemWidget), list);
+
+            if (list.Any())
+            {
+                autoComplete(list[0] as WordListItemWidget);
+            }
+        }
+
+        /// <summary>
+        /// Checks if the command in arg needs to be enabled or not
+        /// depending on the context.  Call this in the CheckCommandEnabled
         /// function in the Alphabet scanner.
         /// </summary>
         /// <param name="arg">widget info</param>
         /// <returns>true on success</returns>
-        public bool CheckWidgetEnabled(CheckEnabledArgs arg)
+        public bool CheckCommandEnabled(CommandEnabledArg arg)
         {
-            return _scannerHelper.CheckWidgetEnabled(arg);
+            return _scannerHelper.CheckCommandEnabled(arg);
         }
 
         /// <summary>
@@ -243,7 +229,6 @@ namespace ACAT.Lib.Extension
         {
             PanelClass = startupArg.PanelClass;
 
-            _scannerCommon = new ScannerCommon(_scannerPanel);
             _scannerHelper = new ScannerHelper(_scannerPanel, startupArg);
 
             if (!_scannerCommon.Initialize(startupArg))
@@ -252,9 +237,23 @@ namespace ACAT.Lib.Extension
                 return false;
             }
 
-            _rootWidget = _scannerCommon.GetRootWidget();
+            _rootWidget = PanelCommon.RootWidget;
 
             return true;
+        }
+
+        /// <summary>
+        /// Call this in the form's OnClientChanged handler.
+        /// Client size changed.  Resize the form to maintain aspect ratio
+        /// If the app is DPI aware, the form doesn't scale properly.  The
+        /// vertical gets squeezed.  Let's store the design time aspect
+        /// ratio and then use it later in the OnLoad to restore the aspect
+        /// ratio.
+        /// </summary>
+        /// <param name="e">event args</param>
+        public void OnClientSizeChanged()
+        {
+            _scannerCommon.OnClientSizeChanged();
         }
 
         /// <summary>
@@ -310,7 +309,7 @@ namespace ACAT.Lib.Extension
 
             if (!_scannerCommon.PreviewMode)
             {
-                _scannerCommon.GetAnimationManager().Start(_rootWidget);
+                PanelCommon.AnimationManager.Start(_rootWidget);
             }
             else
             {
@@ -333,8 +332,6 @@ namespace ACAT.Lib.Extension
         {
             Log.Debug();
 
-            _scannerCommon.GetAnimationManager().Pause();
-            _scannerCommon.HideScanner();
             _scannerCommon.OnPause();
         }
 
@@ -346,16 +343,12 @@ namespace ACAT.Lib.Extension
         {
             Log.Debug();
 
-            _scannerCommon.GetAnimationManager().Resume();
-
-            _scannerCommon.ShowScanner();
+            _scannerCommon.OnResume();
 
             refreshWordPredictionsAndSetCurrentWord();
 
             if (!_scannerCommon.DialogMode)
             {
-                _scannerCommon.OnResume();
-
                 _scannerCommon.KeepTalkWindowActive = false;
             }
         }
@@ -372,25 +365,31 @@ namespace ACAT.Lib.Extension
             {
                 _form.Invoke(new MethodInvoker(delegate
                 {
-                    Log.Debug("wordListItemName : " + widget.Name);
-                    var item = widget as WordListItemWidget;
-                    Log.Debug("Value: " + item.Value);
-                    var wordSelected = item.Value.Trim();
-
-                    if (!String.IsNullOrEmpty(wordSelected))
-                    {
-                        KeyStateTracker.ClearAlt();
-                        KeyStateTracker.ClearCtrl();
-
-                        _scannerCommon.AutoCompleteWord(wordSelected);
-                        AuditLog.Audit(new AuditEventAutoComplete(widget.Name));
-                    }
+                    autoComplete(widget as WordListItemWidget);
                 }));
                 handled = true;
             }
             else
             {
                 handled = false;
+            }
+        }
+
+        /// <summary>
+        /// Resizes form to fit the height of the desktop if it
+        /// exceeds the size
+        /// </summary>
+        /// <param name="form">the form</param>
+        public void ResizeToFitDesktop(Form form)
+        {
+            int desktopHeight = Screen.PrimaryScreen.WorkingArea.Height;
+            if (form.Height > desktopHeight)
+            {
+                float ratio = ((float)desktopHeight / form.Height);
+
+                form.Top = 0;
+                form.Height = desktopHeight;
+                form.Width = (int)((float)form.Width * ratio);
             }
         }
 
@@ -501,6 +500,22 @@ namespace ACAT.Lib.Extension
             }
 
             Log.Debug("returning");
+        }
+
+        private void autoComplete(WordListItemWidget wordListWidget)
+        {
+            Log.Debug("wordListItemName : " + wordListWidget.Name + ", value: " + wordListWidget.Value);
+
+            var wordSelected = wordListWidget.Value.Trim();
+
+            if (!String.IsNullOrEmpty(wordSelected))
+            {
+                KeyStateTracker.ClearAlt();
+                KeyStateTracker.ClearCtrl();
+
+                _scannerCommon.AutoCompleteWord(wordSelected);
+                AuditLog.Audit(new AuditEventAutoComplete(wordListWidget.Name));
+            }
         }
 
         /// <summary>
@@ -680,6 +695,7 @@ namespace ACAT.Lib.Extension
                 var possessiveWord = String.Empty;
 
                 if (!String.IsNullOrEmpty(wordAtCaret) &&
+                    R.IsCurrentCultureEnglish() &&
                     Context.AppAgentMgr.CurrentEditingMode == EditingMode.Edit &&
                     !wordAtCaret.EndsWith("'s", StringComparison.InvariantCultureIgnoreCase) &&
                     (charAtCaret == '\0' || charAtCaret == 0x0D || charAtCaret == 0x0A ||
@@ -757,19 +773,20 @@ namespace ACAT.Lib.Extension
             public CmdDispatcher(AlphabetScannerCommon alphabetScannerCommon, IScannerPanel panel)
                 : base(panel)
             {
-                Commands.Add(new ShowScannerHandler(alphabetScannerCommon, "CmdMouseScanner"));
-                Commands.Add(new ShowScannerHandler(alphabetScannerCommon, "CmdCursorScanner"));
-                Commands.Add(new ShowScannerHandler(alphabetScannerCommon, "CmdPunctuationScanner"));
-                Commands.Add(new ShowScannerHandler(alphabetScannerCommon, "CmdWindowPosSizeMenu"));
-                Commands.Add(new ShowScannerHandler(alphabetScannerCommon, "CmdNumberScanner"));
-                Commands.Add(new ShowScannerHandler(alphabetScannerCommon, "CmdFunctionKeyScanner"));
+                Commands.Add(new CommandHandler(alphabetScannerCommon, "CmdMouseScanner"));
+                Commands.Add(new CommandHandler(alphabetScannerCommon, "CmdCursorScanner"));
+                Commands.Add(new CommandHandler(alphabetScannerCommon, "CmdPunctuationScanner"));
+                Commands.Add(new CommandHandler(alphabetScannerCommon, "CmdWindowPosSizeMenu"));
+                Commands.Add(new CommandHandler(alphabetScannerCommon, "CmdNumberScanner"));
+                Commands.Add(new CommandHandler(alphabetScannerCommon, "CmdFunctionKeyScanner"));
+                Commands.Add(new CommandHandler(alphabetScannerCommon, "CmdAutocompleteWithFirstWord"));
             }
         }
 
         /// <summary>
         /// Command handler to show other scanners such as Cursor, Punctuations etc.
         /// </summary>
-        private class ShowScannerHandler : CreateAndShowScanner
+        private class CommandHandler : CreateAndShowScanner
         {
             /// <summary>
             /// The parent object
@@ -781,7 +798,7 @@ namespace ACAT.Lib.Extension
             /// </summary>
             /// <param name="alphabetScannerCommon">parent object</param>
             /// <param name="cmd">command to execute</param>
-            public ShowScannerHandler(AlphabetScannerCommon alphabetScannerCommon, String cmd)
+            public CommandHandler(AlphabetScannerCommon alphabetScannerCommon, String cmd)
                 : base(cmd)
             {
                 _alphabetScannerCommon = alphabetScannerCommon;
@@ -800,6 +817,10 @@ namespace ACAT.Lib.Extension
 
                 switch (Command)
                 {
+                    case "CmdAutocompleteWithFirstWord":
+                        _alphabetScannerCommon.AutocompleteWithFirstWord();
+                        break;
+
                     case "CmdPunctuationScanner":
                     case "CmdCursorScanner":
                     case "CmdMouseScanner":
@@ -812,7 +833,8 @@ namespace ACAT.Lib.Extension
 
                     case "CmdWindowPosSizeMenu":
                         {
-                            var panel = Context.AppPanelManager.CreatePanel("WindowPosSizeMenu", "Window") as IPanel;
+                            Context.AppTalkWindowManager.CloseTalkWindow();
+                            var panel = Context.AppPanelManager.CreatePanel("WindowPosSizeMenu", R.GetString("Window")) as IPanel;
                             if (panel != null)
                             {
                                 Context.AppPanelManager.Show(form as IPanel, panel);

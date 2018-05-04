@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="WindowActiveWatchdog.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,43 +19,7 @@
 ////////////////////////////////////////////////////////////////////////////
 
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Windows.Forms;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
 
 namespace ACAT.Lib.Core.Utility
 {
@@ -74,6 +38,11 @@ namespace ACAT.Lib.Core.Utility
         /// Which form to watch
         /// </summary>
         private Form _form;
+
+        /// <summary>
+        /// Pause the watchdog?
+        /// </summary>
+        private bool _paused;
 
         /// <summary>
         /// Constructor.  Allocates resources, event handlers
@@ -99,6 +68,23 @@ namespace ACAT.Lib.Core.Utility
             // Prevent finalization code for this object
             // from executing a second time.
             GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Pause the watchdog
+        /// </summary>
+        public void Pause()
+        {
+            _paused = true;
+        }
+
+        /// <summary>
+        /// Resume the watchdog
+        /// </summary>
+        public void Resume()
+        {
+            _paused = false;
+            reactivateForm();
         }
 
         /// <summary>
@@ -141,9 +127,12 @@ namespace ACAT.Lib.Core.Utility
         /// <param name="e">event arg</param>
         private void _form_Deactivate(object sender, EventArgs e)
         {
-            Log.Debug("DEACTVATED!! Re-activating " + getFormName());
+            if (!_paused)
+            {
+                Log.Debug("DEACTVATED!! Re-activating " + getFormName());
 
-            reactivateForm();
+                reactivateForm();
+            }
         }
 
         /// <summary>
@@ -180,7 +169,7 @@ namespace ACAT.Lib.Core.Utility
                     Log.Debug("Activating form " + getFormName());
                     try
                     {
-                        _form.Invoke(new MethodInvoker(delegate()
+                        _form.Invoke(new MethodInvoker(delegate
                         {
                             // this is a windows defect.  If topmost
                             // is already true, it has not effect.

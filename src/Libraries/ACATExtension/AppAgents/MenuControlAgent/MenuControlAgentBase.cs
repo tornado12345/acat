@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="MenuControlAgentBase.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,13 +18,13 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
+using ACAT.Lib.Core.AgentManagement;
+using ACAT.Lib.Core.PanelManagement;
+using ACAT.Lib.Core.Utility;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Windows.Forms;
-using ACAT.Lib.Core.AgentManagement;
-using ACAT.Lib.Core.PanelManagement;
-using ACAT.Lib.Core.Utility;
 
 namespace ACAT.Lib.Extension.AppAgents.MenuControlAgent
 {
@@ -145,7 +145,7 @@ namespace ACAT.Lib.Extension.AppAgents.MenuControlAgent
         /// <param name="monitorInfo">Foreground menu window information</param>
         private void showMenuContextMenu(WindowActivityMonitorInfo monitorInfo)
         {
-            showPanel(this, new PanelRequestEventArgs(PanelClasses.MenuContextMenu, "Menu", monitorInfo, true));
+            showPanel(this, new PanelRequestEventArgs(PanelClasses.MenuContextMenu, "AppMenu", monitorInfo, true));
             scannerShown = true;
         }
     }

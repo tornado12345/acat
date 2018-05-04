@@ -98,6 +98,7 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(448, 280);
+            this.ControlBox = false;
             this.Controls.Add(this.labelFolderLocation);
             this.Controls.Add(this.buttonYes);
             this.Controls.Add(this.label3);
@@ -107,6 +108,7 @@
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
             this.Name = "Form1";
             this.Text = "ACAT Uninstall";
+            this.TopMost = true;
             this.ResumeLayout(false);
 
         }

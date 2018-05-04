@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="PanelManager.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,50 +18,39 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
+using ACAT.Lib.Core.Utility;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Windows.Automation;
 using System.Windows.Forms;
-using ACAT.Lib.Core.Utility;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-    "StyleCop.CSharp.ReadabilityRules",
-    "SA1126:PrefixCallsCorrectly",
-    Scope = "namespace",
-    Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-    "StyleCop.CSharp.ReadabilityRules",
-    "SA1101:PrefixLocalCallsWithThis",
-    Scope = "namespace",
-    Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-    "StyleCop.CSharp.ReadabilityRules",
-    "SA1121:UseBuiltInTypeAlias",
-    Scope = "namespace",
-    Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-    "StyleCop.CSharp.DocumentationRules",
-    "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-    Scope = "namespace",
-    Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-    "StyleCop.CSharp.NamingRules",
-    "SA1309:FieldNamesMustNotBeginWithUnderscore",
-    Scope = "namespace",
-    Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-    "StyleCop.CSharp.NamingRules",
-    "SA1300:ElementMustBeginWithUpperCaseLetter",
-    Scope = "namespace",
-    Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
 
 namespace ACAT.Lib.Core.PanelManagement
 {
+    /// <summary>
+    /// How is a panel being displayed?
+    /// </summary>
+    public enum DisplayModeTypes
+    {
+        None,
+
+        /// <summary>
+        /// As a normal window
+        /// </summary>
+        Normal,
+
+        /// <summary>
+        /// As a modal dialog
+        /// </summary>
+        Dialog,
+
+        /// <summary>
+        /// As a popup window.  Similar to Dialog except
+        /// the parent scanner may alter its behavior in
+        /// the OnPause handler
+        /// </summary>
+        Popup
+    }
+
     /// <summary>
     /// Manages display of scanners.  On startup, walks the
     /// extension directories and loads all the scanners, dialogs
@@ -101,10 +90,27 @@ namespace ACAT.Lib.Core.PanelManagement
         {
             Context.AppAgentMgr.EvtPanelRequest += AppAgent_EvtPanelRequest;
             Context.AppAgentMgr.EvtFocusChanged += AppAgent_EvtFocusChanged;
+            Context.EvtCultureChanged += Context_EvtCultureChanged;
             ScannerCommon.EvtScannerShow += ScannerCommon_EvtScannerShow;
+            Microsoft.Win32.SystemEvents.DisplaySettingsChanged += SystemEvents_DisplaySettingsChanged;
 
             getTopOfStack();
         }
+
+        /// <summary>
+        /// Inovked when the application quits
+        /// </summary>
+        public event EventHandler EvtAppQuit;
+
+        /// <summary>
+        /// Event raised when the desktop size or the resolution changes
+        /// </summary>
+        public event EventHandler EvtDisplaySettingsChanged;
+
+        /// <summary>
+        /// Event raised just before panel is displayed
+        /// </summary>
+        public event PanelPreShow EvtPanelPreShow;
 
         /// <summary>
         /// Raised when a scanner is closed
@@ -144,15 +150,31 @@ namespace ACAT.Lib.Core.PanelManagement
         }
 
         /// <summary>
-        /// Gets or sets the preferred names of groups of scanners to use.
-        /// ACAT scanners can be grouped in any manner, each group has
-        /// a name.  This property contains an array of names of panel groups.
+        /// Gets the display mode of the panel that is currently displayed
         /// </summary>
-        public String[] PreferredPanelConfigNames
+        public DisplayModeTypes PanelDisplayMode
         {
-            get { return PanelConfigMap.PreferredPanelConfigNames; }
+            get { return getTopOfStack().PanelDisplayMode; }
+        }
 
-            set { PanelConfigMap.PreferredPanelConfigNames = value; }
+        /// <summary>
+        /// Gets the panel that is about to be shown.  Call
+        /// this from the OnPause handler to see which panel is going
+        /// to be displayed. Has non-null value JUST before the panel
+        /// is shown, null all other times
+        /// </summary>
+        public IPanel PreShowPanel
+        {
+            get { return getTopOfStack().PreShowPanel; }
+        }
+
+        /// <summary>
+        /// Gets the display mode of the panel that is about to
+        /// be shown
+        /// </summary>
+        public DisplayModeTypes PreShowPanelDisplayMode
+        {
+            get { return getTopOfStack().PreShowPanelDisplayMode; }
         }
 
         /// <summary>
@@ -304,11 +326,6 @@ namespace ACAT.Lib.Core.PanelManagement
             GC.SuppressFinalize(this);
         }
 
-        public void Foo()
-        {
-            Log.Debug("Foo");
-        }
-
         /// <summary>
         /// Returns the currently visible panel Form
         /// </summary>
@@ -350,6 +367,8 @@ namespace ACAT.Lib.Core.PanelManagement
         /// <returns>true on success</returns>
         public bool Init(IEnumerable<String> extensionDirs)
         {
+            PanelConfigMap.Reset();
+
             var retVal = PanelConfigMap.Load(extensionDirs);
 
             PanelConfigMap.Load(Preferences.ApplicationAssembly);
@@ -361,10 +380,23 @@ namespace ACAT.Lib.Core.PanelManagement
 
             PanelConfigMap.CleanupOrphans();
 
-            var configNames = CoreGlobals.AppPreferences.PreferredPanelConfigNames.Split(';');
-            PreferredPanelConfigNames = configNames;
+            if (!String.IsNullOrEmpty(CoreGlobals.AppPreferences.PreferredPanelConfigNames))
+            {
+                PanelConfigMap.SetDefaultPanelConfig(CoreGlobals.AppPreferences.PreferredPanelConfigNames.Trim());
+            }
 
             return retVal;
+        }
+
+        /// <summary>
+        /// Returns true if the current panel class is the one
+        /// specified =
+        /// </summary>
+        /// <param name="panelClass">panelclass to check for</param>
+        /// <returns>true if it is</returns>
+        public bool IsCurrentPanelClass(String panelClass)
+        {
+            return String.Compare(panelClass, Context.AppPanelManager.GetCurrentPanelName(), true) == 0;
         }
 
         /// <summary>
@@ -439,7 +471,7 @@ namespace ACAT.Lib.Core.PanelManagement
         }
 
         /// <summary>
-        /// Show panel as a Dialog with the parent as the
+        /// Show panel as a popup with the parent as the
         /// parent form
         /// </summary>
         /// <param name="parent">the parent form</param>
@@ -448,6 +480,52 @@ namespace ACAT.Lib.Core.PanelManagement
         public bool ShowDialog(IPanel parent, IPanel panel)
         {
             return getTopOfStack().ShowDialog(parent, panel);
+        }
+
+        /// <summary>
+        /// Displays the panel as a popup
+        /// </summary>
+        /// <param name="form">panel to display</param>
+        /// <returns>true on success</returns>
+        public bool ShowPopup(IPanel panel)
+        {
+            return getTopOfStack().ShowPopup(panel);
+        }
+
+        /// <summary>
+        /// Displays the panel as a popup. Parent is the panel
+        /// making the call. Also Pauses the parent
+        /// It will be Resumed when the 'panel' is closed.
+        /// </summary>
+        /// <param name="parent">The parent panel</param>
+        /// <param name="panel">the panel to show</param>
+        /// <returns>true on success</returns>
+        public bool ShowPopup(IPanel parent, IPanel panel)
+        {
+            return getTopOfStack().ShowPopup(parent, panel);
+        }
+
+        /// <summary>
+        /// Raises the event before panel is displayed
+        /// </summary>
+        /// <param name="arg"></param>
+        internal void NotifyPanelPreShow(PanelPreShowEventArg arg)
+        {
+            if (EvtPanelPreShow != null)
+            {
+                EvtPanelPreShow(this, arg);
+            }
+        }
+
+        /// <summary>
+        /// Notify subscribers that application is quiting
+        /// </summary>
+        internal void NotifyQuitApplication()
+        {
+            if (EvtAppQuit != null)
+            {
+                EvtAppQuit(_instance, new EventArgs());
+            }
         }
 
         /// <summary>
@@ -460,6 +538,10 @@ namespace ACAT.Lib.Core.PanelManagement
             if (!_disposed)
             {
                 Log.Debug();
+
+                Context.EvtCultureChanged -= Context_EvtCultureChanged;
+
+                Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= SystemEvents_DisplaySettingsChanged;
 
                 if (disposing)
                 {
@@ -500,6 +582,21 @@ namespace ACAT.Lib.Core.PanelManagement
         }
 
         /// <summary>
+        /// Event handler for when the default culture chnages
+        /// </summary>
+        /// <param name="sender">event sender</param>
+        /// <param name="arg">event arg</param>
+        private void Context_EvtCultureChanged(object sender, CultureChangedEventArg arg)
+        {
+            getTopOfStack().CurrentForm.Invoke(new MethodInvoker(delegate
+            {
+                ClearStack();
+                PanelConfigMap.Reset();
+                Init(Context.ExtensionDirs);
+            }));
+        }
+
+        /// <summary>
         /// Creates a new panelstack object
         /// </summary>
         /// <returns>created object</returns>
@@ -510,6 +607,10 @@ namespace ACAT.Lib.Core.PanelManagement
             return panelStack;
         }
 
+        /// <summary>
+        /// Returns the top of stack in the stack of panels
+        /// </summary>
+        /// <returns>PanelStack object</returns>
         private PanelStack getTopOfStack()
         {
             PanelStack panelStack;
@@ -553,6 +654,21 @@ namespace ACAT.Lib.Core.PanelManagement
             if (EvtScannerShow != null)
             {
                 EvtScannerShow(sender, arg);
+            }
+        }
+
+        /// <summary>
+        /// Display resolution changed.  Raise the event
+        /// </summary>
+        /// <param name="sender">event sender</param>
+        /// <param name="e">event args</param>
+        private void SystemEvents_DisplaySettingsChanged(object sender, EventArgs e)
+        {
+            Log.Debug("Display Resolution changed. Working area is " + Screen.PrimaryScreen.WorkingArea);
+
+            if (EvtDisplaySettingsChanged != null)
+            {
+                EvtDisplaySettingsChanged(sender, e);
             }
         }
     }

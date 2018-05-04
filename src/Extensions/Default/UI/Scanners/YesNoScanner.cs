@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="YesNoScanner.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,10 +18,6 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Security.Permissions;
-using System.Windows.Forms;
 using ACAT.Lib.Core.ActuatorManagement;
 using ACAT.Lib.Core.AgentManagement;
 using ACAT.Lib.Core.Extensions;
@@ -32,41 +28,10 @@ using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Core.WidgetManagement;
 using ACAT.Lib.Extension;
 using ACAT.Lib.Extension.CommandHandlers;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Collections.Generic;
+using System.Security.Permissions;
+using System.Windows.Forms;
 
 namespace ACAT.Extensions.Default.UI.Menus
 {
@@ -117,6 +82,11 @@ namespace ACAT.Extensions.Default.UI.Menus
         private readonly KeyboardActuator _keyboardActuator;
 
         /// <summary>
+        /// Text for the "No" button
+        /// </summary>
+        private String _noText;
+
+        /// <summary>
         /// The scanner helper object
         /// </summary>
         private ScannerHelper _scannerHelper;
@@ -127,12 +97,19 @@ namespace ACAT.Extensions.Default.UI.Menus
         private String _title = String.Empty;
 
         /// <summary>
+        /// Text for  the "Yes" button
+        /// </summary>
+        private String _yesText;
+
+        /// <summary>
         /// Initializes a new instance of the class.
         /// </summary>
         /// <param name="panelClass">Panel class of the scanner</param>
         /// <param name="panelTitle">Title of the scanner</param>
         public YesNoScanner(String panelClass, String panelTitle)
         {
+            scannerCommon = new ScannerCommon(this);
+
             InitializeComponent();
 
             Load += ContextMenu_Load;
@@ -194,6 +171,11 @@ namespace ACAT.Extensions.Default.UI.Menus
         public String PanelClass { get; protected set; }
 
         /// <summary>
+        /// Gets the PanelCommon object
+        /// </summary>
+        public IPanelCommon PanelCommon { get { return scannerCommon; } }
+
+        /// <summary>
         /// Gets the scanner common object
         /// </summary>
         public ScannerCommon ScannerCommon
@@ -242,9 +224,9 @@ namespace ACAT.Extensions.Default.UI.Menus
         /// to determine the 'enabled' state.
         /// </summary>
         /// <param name="arg">info about the scanner button</param>
-        public bool CheckWidgetEnabled(CheckEnabledArgs arg)
+        public bool CheckCommandEnabled(CommandEnabledArg arg)
         {
-            return _scannerHelper.CheckWidgetEnabled(arg);
+            return _scannerHelper.CheckCommandEnabled(arg);
         }
 
         /// <summary>
@@ -269,7 +251,6 @@ namespace ACAT.Extensions.Default.UI.Menus
             this.startupArg = startupArg;
 
             _scannerHelper = new ScannerHelper(this, startupArg);
-            scannerCommon = new ScannerCommon(this);
 
             if (!scannerCommon.Initialize(startupArg))
             {
@@ -277,7 +258,7 @@ namespace ACAT.Extensions.Default.UI.Menus
                 return false;
             }
 
-            rootWidget = scannerCommon.GetRootWidget();
+            rootWidget = PanelCommon.RootWidget;
             return true;
         }
 
@@ -297,10 +278,6 @@ namespace ACAT.Extensions.Default.UI.Menus
         public virtual void OnPause()
         {
             Log.Debug();
-
-            scannerCommon.GetAnimationManager().Pause();
-
-            scannerCommon.HideScanner();
 
             scannerCommon.OnPause();
         }
@@ -322,10 +299,6 @@ namespace ACAT.Extensions.Default.UI.Menus
         {
             Log.Debug();
 
-            scannerCommon.GetAnimationManager().Resume();
-
-            scannerCommon.ShowScanner();
-
             scannerCommon.OnResume();
         }
 
@@ -346,6 +319,16 @@ namespace ACAT.Extensions.Default.UI.Menus
         /// <param name="widget"></param>
         public void SetTargetControl(Form parent, Widget widget)
         {
+        }
+
+        /// <summary>
+        /// Size of the client changed
+        /// </summary>
+        /// <param name="e">event args</param>
+        protected override void OnClientSizeChanged(EventArgs e)
+        {
+            base.OnClientSizeChanged(e);
+            scannerCommon.OnClientSizeChanged();
         }
 
         /// <summary>
@@ -386,13 +369,16 @@ namespace ACAT.Extensions.Default.UI.Menus
         /// <param name="e">event args</param>
         private void _keyboardActuator_EvtKeyPress(object sender, KeyPressEventArgs e)
         {
-            if (e.KeyChar == 27 || e.KeyChar == 'n' || e.KeyChar == 'N')
+            char yesChar = string.IsNullOrEmpty(_yesText) ? '\0' : Char.ToLower(_yesText[0]);
+            char noChar = string.IsNullOrEmpty(_noText) ? '\0' : Char.ToLower(_noText[0]);
+
+            if (e.KeyChar == 27 || (noChar != '\0' && Char.ToLower(e.KeyChar) == noChar))
             {
                 e.Handled = true;
                 Choice = false;
                 Close();
             }
-            else if (e.KeyChar == 'y' || e.KeyChar == 'Y')
+            else if (yesChar != '\0' && Char.ToLower(e.KeyChar) == yesChar)
             {
                 e.Handled = true;
                 Choice = true;
@@ -419,19 +405,50 @@ namespace ACAT.Extensions.Default.UI.Menus
             Log.Debug();
 
             scannerCommon.OnLoad(false);
-            Widget widget = scannerCommon.GetRootWidget().Finder.FindChild("ContextMenuTitle");
+            Widget widget = PanelCommon.RootWidget.Finder.FindChild("ContextMenuTitle");
             if (widget != null)
             {
                 widget.SetText(_title);
             }
 
-            widget = scannerCommon.GetRootWidget().Finder.FindChild("Prompt");
+            widget = PanelCommon.RootWidget.Finder.FindChild("Prompt");
             if (widget != null && !String.IsNullOrEmpty(Caption))
             {
                 widget.SetText(Caption);
             }
 
-            scannerCommon.GetAnimationManager().Start(rootWidget);
+            getYesNoText();
+
+            PanelCommon.AnimationManager.Start(rootWidget);
+        }
+
+        /// <summary>
+        /// Gets the text for "Yes" and "No" from the buttons
+        /// </summary>
+        private void getYesNoText()
+        {
+            var list = new List<Widget>();
+
+            PanelCommon.RootWidget.Finder.FindAllButtons(list);
+
+            foreach (var button in list)
+            {
+                if (button.Value == "@CmdNo")
+                {
+                    if (!String.IsNullOrEmpty(button.UIControl.Text))
+                    {
+                        _noText = button.UIControl.Text;
+                    }
+                }
+
+                if (button.Value == "@CmdYes")
+                {
+                    if (!String.IsNullOrEmpty(button.UIControl.Text))
+                    {
+                        _yesText = button.UIControl.Text;
+                    }
+                }
+            }
         }
 
         /// <summary>

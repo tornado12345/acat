@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="DescriptorAttribute.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,42 +19,6 @@
 ////////////////////////////////////////////////////////////////////////////
 
 using System;
-using System.Diagnostics.CodeAnalysis;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
 
 namespace ACAT.Lib.Core.Utility
 {
@@ -67,6 +31,11 @@ namespace ACAT.Lib.Core.Utility
     /// </summary>
     public class DescriptorAttribute : Attribute, IDescriptor
     {
+        /// <summary>
+        /// Category (user-defined)
+        /// </summary>
+        private String _category;
+
         /// <summary>
         /// Friendly description
         /// </summary>
@@ -91,6 +60,7 @@ namespace ACAT.Lib.Core.Utility
         public DescriptorAttribute(String id, String name, String description)
         {
             _name = name;
+            _category = String.Empty;
             _description = description;
             if (!Guid.TryParse(id, out _guid))
             {
@@ -99,7 +69,35 @@ namespace ACAT.Lib.Core.Utility
         }
 
         /// <summary>
-        /// Gets or sets the description
+        /// Initializes an instance of the class
+        /// </summary>
+        /// <param name="id">GUID id</param>
+        /// <param name="name">friendly name</param>
+        /// <param name="description">description</param>
+        public DescriptorAttribute(String id, String name, String category, String description)
+        {
+            _name = name;
+            _description = description;
+            _category = category;
+            if (!Guid.TryParse(id, out _guid))
+            {
+                _guid = Guid.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Gets the category
+        /// </summary>
+        public string Category
+        {
+            get
+            {
+                return _category;
+            }
+        }
+
+        /// <summary>
+        /// Gets the description
         /// </summary>
         public String Description
         {
@@ -110,7 +108,7 @@ namespace ACAT.Lib.Core.Utility
         }
 
         /// <summary>
-        /// Gets or sets the unique id
+        /// Gets the unique id
         /// </summary>
         public Guid Id
         {
@@ -121,7 +119,7 @@ namespace ACAT.Lib.Core.Utility
         }
 
         /// <summary>
-        /// Gets or sets the name
+        /// Gets the name
         /// </summary>
         public string Name
         {

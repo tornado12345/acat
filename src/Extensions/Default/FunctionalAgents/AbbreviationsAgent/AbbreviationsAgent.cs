@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="AbbreviationsAgent.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,10 +18,7 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Windows.Automation;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.AbbreviationsManagement;
 using ACAT.Lib.Core.AgentManagement;
 using ACAT.Lib.Core.AgentManagement.TextInterface;
@@ -29,41 +26,9 @@ using ACAT.Lib.Core.Extensions;
 using ACAT.Lib.Core.PanelManagement;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Extension;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Windows.Automation;
+using System.Windows.Forms;
 
 namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
 {
@@ -73,7 +38,8 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
     /// can add, delete or modify abbreviations.
     /// </summary>
     [DescriptorAttribute("4AD7D574-9C8F-4ED7-9152-F836F210F68E",
-                            "Abbreviations Agent",
+                            "Abbreviations Editor",
+                            "AbbreviationsAgent",
                             "Creates/edits/deletes abbreviations")]
     public class AbbreviationsAgent : FunctionalAgentBase
     {
@@ -121,10 +87,14 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
             bool retVal = true;
 
             ExitCode = CompletionCode.None;
+            IsClosing = false;
+
             _abbrForm = Context.AppPanelManager.CreatePanel("AbbreviationsScanner") as AbbreviationsScanner;
             if (_abbrForm != null)
             {
                 subscribeToEvents();
+
+                IsActive = true;
 
                 Context.AppPanelManager.ShowDialog(_abbrForm);
             }
@@ -141,14 +111,14 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
         /// to determine the 'enabled' state.
         /// </summary>
         /// <param name="arg">info about the scanner button</param>
-        public override void CheckWidgetEnabled(CheckEnabledArgs arg)
+        public override void CheckCommandEnabled(CommandEnabledArg arg)
         {
             arg.Handled = true;
 
-            switch (arg.Widget.SubClass)
+            switch (arg.Command)
             {
-                case "PunctuationScanner":
-                case "NumberScanner":
+                case "CmdPunctuationScanner":
+                case "CmdNumberScanner":
                     arg.Enabled = true;
                     break;
 
@@ -162,7 +132,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
 
                     if (_abbrForm != null && Windows.GetVisible(_abbrForm))
                     {
-                        _abbrForm.CheckWidgetEnabled(arg);
+                        _abbrForm.CheckCommandEnabled(arg);
                     }
 
                     if (!arg.Handled)
@@ -182,6 +152,12 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
         /// <param name="handled">was this handled</param>
         public override void OnFocusChanged(WindowActivityMonitorInfo monitorInfo, ref bool handled)
         {
+            if (IsClosing)
+            {
+                Log.Debug("IsClosing is true.  Will not handle the focus change");
+                return;
+            }
+
             base.OnFocusChanged(monitorInfo, ref handled);
 
             handled = true;
@@ -228,7 +204,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
                 case "DeleteAbbreviation":
                     if (_abbreviationSelected != null)
                     {
-                        if (Confirm("Delete " + _abbreviationSelected.Mnemonic + "?"))
+                        if (Confirm(String.Format(R.GetString("DeleteAbbr"), _abbreviationSelected.Mnemonic)))
                         {
                             deleteAbbreviation(_abbreviationSelected);
                             _abbreviationSelected = null;
@@ -351,9 +327,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
 
             if (!operation.Cancel)
             {
-                Context.AppAbbreviations.Add(operation.OutputAbbreviation);
-                Context.AppAbbreviations.Save();
-                Context.AppAbbreviations.Load();
+                Context.AppAbbreviationsManager.Abbreviations.Add(operation.OutputAbbreviation);
+                Context.AppAbbreviationsManager.Abbreviations.Save();
+                Context.AppAbbreviationsManager.Abbreviations.Load();
             }
 
             _abbrForm.LoadAbbreviations();
@@ -395,9 +371,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
         /// <param name="abbr">abbreviation to delete</param>
         private void deleteAbbreviation(Abbreviation abbr)
         {
-            Context.AppAbbreviations.Remove(abbr.Mnemonic);
-            Context.AppAbbreviations.Save();
-            Context.AppAbbreviations.Load();
+            Context.AppAbbreviationsManager.Abbreviations.Remove(abbr.Mnemonic);
+            Context.AppAbbreviationsManager.Abbreviations.Save();
+            Context.AppAbbreviationsManager.Abbreviations.Load();
             _abbrForm.LoadAbbreviations();
         }
 
@@ -417,22 +393,22 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
             {
                 if (operation.Delete)
                 {
-                    Context.AppAbbreviations.Remove(abbr.Mnemonic);
+                    Context.AppAbbreviationsManager.Abbreviations.Remove(abbr.Mnemonic);
                 }
                 else
                 {
-                    if (!Context.AppAbbreviations.Exists(operation.OutputAbbreviation.Mnemonic))
+                    if (!Context.AppAbbreviationsManager.Abbreviations.Exists(operation.OutputAbbreviation.Mnemonic))
                     {
-                        Context.AppAbbreviations.Add(operation.OutputAbbreviation);
+                        Context.AppAbbreviationsManager.Abbreviations.Add(operation.OutputAbbreviation);
                     }
                     else
                     {
-                        Context.AppAbbreviations.Update(operation.OutputAbbreviation);
+                        Context.AppAbbreviationsManager.Abbreviations.Update(operation.OutputAbbreviation);
                     }
                 }
 
-                Context.AppAbbreviations.Save();
-                Context.AppAbbreviations.Load();
+                Context.AppAbbreviationsManager.Abbreviations.Save();
+                Context.AppAbbreviationsManager.Abbreviations.Load();
             }
 
             _abbrForm.LoadAbbreviations();
@@ -447,7 +423,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
         private void editOrAddAbbreviation(AbbrOperation operation)
         {
             var dlg = Context.AppPanelManager.CreatePanel("AbbreviationEditorForm");
-            if (dlg == null)
+            if (!(dlg is IExtension))
             {
                 return;
             }
@@ -491,11 +467,14 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
 
             if (showConfirmDialog)
             {
-                quit = Confirm("Close?");
+                quit = Confirm(R.GetString("CloseQ"));
             }
 
             if (quit)
             {
+                IsActive = false;
+                IsClosing = true;
+
                 closeScanner();
                 Close();
             }
@@ -534,7 +513,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
 
     /// <summary>
     /// Type of operation to perform on the abbreviation. This
-    /// object is used as the data object
+    /// object is used as the meta-data object
     /// </summary>
     internal class AbbrOperation
     {

@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="LaunchAppAgent.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,53 +18,19 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Threading;
-using System.Windows.Automation;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.AgentManagement;
 using ACAT.Lib.Core.AgentManagement.TextInterface;
 using ACAT.Lib.Core.PanelManagement;
 using ACAT.Lib.Core.UserManagement;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Extension;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading;
+using System.Windows.Automation;
+using System.Windows.Forms;
 
 namespace ACAT.Extensions.Default.FunctionalAgents.LaunchAppAgent
 {
@@ -77,8 +43,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LaunchAppAgent
     /// to launch
     /// </summary>
     [DescriptorAttribute("AC74FFEA-4B1C-4707-93E4-2D6BA98C9EA0",
-                            "Launch App Agent",
-                            "Allows the user to launch an application")]
+                            "Application Launcher",
+                            "LaunchAppAgent",
+                            "Launch applications from a list of preferred apps")]
     internal class LaunchAppAgent : FunctionalAgentBase
     {
         /// <summary>
@@ -118,6 +85,8 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LaunchAppAgent
         /// <returns>true on success</returns>
         public override bool Activate()
         {
+            IsClosing = false;
+
             ExitCode = CompletionCode.ContextSwitch;
             _appToLaunchInfo = null;
             _launchAppScanner = Context.AppPanelManager.CreatePanel("LaunchAppScanner") as LaunchAppScanner;
@@ -128,6 +97,8 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LaunchAppAgent
                 _launchAppScanner.EvtQuit += _launchAppScanner_EvtQuit;
                 _launchAppScanner.EvtLaunchApp += _launchAppScanner_EvtLaunchApp;
                 _launchAppScanner.EvtShowScanner += launchAppScanner_EvtShowScanner;
+
+                IsActive = true;
 
                 Context.AppPanelManager.ShowDialog(_launchAppScanner);
             }
@@ -140,21 +111,21 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LaunchAppAgent
         /// to determine the 'enabled' state.
         /// </summary>
         /// <param name="arg">info about the scanner button</param>
-        public override void CheckWidgetEnabled(CheckEnabledArgs arg)
+        public override void CheckCommandEnabled(CommandEnabledArg arg)
         {
             arg.Handled = true;
 
-            switch (arg.Widget.SubClass)
+            switch (arg.Command)
             {
-                case "PunctuationScanner":
-                case "NumberScanner":
+                case "CmdPunctuationScanner":
+                case "CmdNumberScanner":
                     arg.Enabled = true;
                     break;
 
                 default:
                     if (_launchAppScanner != null)
                     {
-                        _launchAppScanner.CheckWidgetEnabled(arg);
+                        _launchAppScanner.CheckCommandEnabled(arg);
                     }
                     if (!arg.Handled)
                     {
@@ -173,6 +144,12 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LaunchAppAgent
         /// <param name="handled">was this handled</param>
         public override void OnFocusChanged(WindowActivityMonitorInfo monitorInfo, ref bool handled)
         {
+            if (IsClosing)
+            {
+                Log.Debug("IsClosing is true.  Will not handle the focus change");
+                return;
+            }
+
             Log.Debug("OnFocus: " + monitorInfo);
 
             base.OnFocusChanged(monitorInfo, ref handled);
@@ -246,7 +223,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LaunchAppAgent
         /// the scanner and the agent are both closed.
         /// </summary>
         /// <param name="sender">event sender</param>
-        /// <param name="appinfo">which app to launch</param>
+        /// <param name="appInfo">which app to launch</param>
         private void _launchAppScanner_EvtLaunchApp(object sender, AppInfo appInfo)
         {
             _appToLaunchInfo = appInfo;
@@ -265,7 +242,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LaunchAppAgent
         /// <param name="e">event args</param>
         private void _launchAppScanner_EvtQuit(object sender, EventArgs args)
         {
-            if (confirm("Close?"))
+            if (confirm(R.GetString("CloseQ")))
             {
                 quit();
             }
@@ -405,6 +382,8 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LaunchAppAgent
         /// </summary>
         private void quit()
         {
+            IsClosing = true;
+            IsActive = false;
             ExitCode = CompletionCode.None;
             closeScanner();
             Close();
@@ -429,6 +408,31 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LaunchAppAgent
             {
                 Log.Debug(ex.ToString());
             }
+        }
+
+        /// <summary>
+        /// Gets whether this supports a custom settings dialog
+        /// </summary>
+        public override bool SupportsPreferencesDialog
+        {
+            get { return true; }
+        }
+
+        /// <summary>
+        /// Shows the preferences dialog
+        /// </summary>
+        /// <returns>true on success</returns>
+        public override bool ShowPreferencesDialog()
+        {
+            var form = new ConfigureLaunchAppSettings();
+            form.Applications = Settings.Applications.ToList();
+            if (form.ShowDialog() == DialogResult.OK)
+            {
+                Settings.Applications = form.Applications.ToArray();
+                Settings.Save();
+            }
+
+            return true;
         }
     }
 }

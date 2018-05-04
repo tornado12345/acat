@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="AbbreviationEditorForm.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,11 +18,7 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Security.Permissions;
-using System.Text.RegularExpressions;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.AbbreviationsManagement;
 using ACAT.Lib.Core.Extensions;
 using ACAT.Lib.Core.PanelManagement;
@@ -30,41 +26,10 @@ using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Core.WidgetManagement;
 using ACAT.Lib.Core.Widgets;
 using ACAT.Lib.Extension;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Security.Permissions;
+using System.Text.RegularExpressions;
+using System.Windows.Forms;
 
 namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
 {
@@ -105,8 +70,8 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
         {
             InitializeComponent();
             _invoker = new ExtensionInvoker(this);
-
-            init();
+            Load += AbbreviationsEditorForm_Load;
+            FormClosing += AbbreviationsEditorForm_FormClosing;
         }
 
         /// <summary>
@@ -135,8 +100,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
         }
 
         /// <summary>
-        /// Gets or sets the input abbreviation that has
-        /// to be edited
+        /// Gets or sets the input abbreviation that has to be edited
         /// </summary>
         public Abbreviation InputAbbreviation { get; set; }
 
@@ -145,6 +109,11 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
         /// user has made the necessary changes
         /// </summary>
         public Abbreviation OutputAbbreviation { get; private set; }
+
+        /// <summary>
+        /// Gets the PanelCommon object
+        /// </summary>
+        public IPanelCommon PanelCommon { get { return _dialogCommon; } }
 
         /// <summary>
         /// Gets the sync object used for synchronization
@@ -172,6 +141,23 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
         }
 
         /// <summary>
+        /// Intitializes the class
+        /// </summary>
+        /// <param name="startupArg">startup param</param>
+        /// <returns>true on success</returns>
+        public bool Initialize(StartupArg startupArg)
+        {
+            _dialogCommon = new DialogCommon(this);
+
+            Add = false;
+            Delete = false;
+            OutputAbbreviation = new Abbreviation(String.Empty, String.Empty, Abbreviation.AbbreviationMode.Speak);
+            Cancel = false;
+
+            return _dialogCommon.Initialize(startupArg);
+        }
+
+        /// <summary>
         /// Invoked when the user selects a widget
         /// in the dialog such as a button or a text box.
         /// </summary>
@@ -185,7 +171,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
                 return;
             }
 
-            Invoke(new MethodInvoker(delegate()
+            Invoke(new MethodInvoker(delegate
             {
                 switch (value)
                 {
@@ -273,8 +259,8 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
         {
             if (Add)
             {
-                Windows.SetText(labelTitle, "Add Abbreviation");
-                var widget = _dialogCommon.GetRootWidget().Finder.FindChild("lblDelete");
+                Windows.SetText(labelTitle, R.GetString("AddAbbreviation"));
+                var widget = PanelCommon.RootWidget.Finder.FindChild("lblDelete");
                 if (widget != null)
                 {
                     widget.Enabled = false;
@@ -282,7 +268,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
             }
             else
             {
-                Windows.SetText(labelTitle, "Edit Abbreviation");
+                Windows.SetText(labelTitle, R.GetString("EditAbbreviation"));
             }
 
             _windowActiveWatchdog = new WindowActiveWatchdog(this);
@@ -291,7 +277,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
 
             _dialogCommon.OnLoad();
 
-            _dialogCommon.GetAnimationManager().Start(_dialogCommon.GetRootWidget());
+            PanelCommon.AnimationManager.Start(PanelCommon.RootWidget);
         }
 
         /// <summary>
@@ -301,9 +287,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
         {
             Log.Debug();
 
-            if (DialogUtils.Confirm("Cancel and Quit?"))
+            if (DialogUtils.Confirm(R.GetString("CancelAndQuit")))
             {
-                Invoke(new MethodInvoker(delegate()
+                Invoke(new MethodInvoker(delegate
                 {
                     Cancel = true;
                     Windows.CloseForm(this);
@@ -320,13 +306,13 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
             var abbr = tbAbbreviation.Text.Trim();
             if (String.IsNullOrEmpty(abbr))
             {
-                DialogUtils.ShowTimedDialog(this, "Error", "Please enter an abbreviation!");
+                showTimedDialog(R.GetString("Error"), R.GetString("PleaseEnterAnAbbreviation"));
                 return;
             }
 
             if (String.IsNullOrEmpty(tbExpansion.Text.Trim()))
             {
-                DialogUtils.ShowTimedDialog(this, "Error", "Expansion is empty");
+                showTimedDialog(R.GetString("Error"), R.GetString("ExpansionIsEmpty"));
                 return;
             }
 
@@ -335,13 +321,10 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
 
             if (Add)
             {
-                // a new abbreviation is beein added
-                if (Context.AppAbbreviations.Exists(abbr))
+                // a new abbreviation is being added
+                if (Context.AppAbbreviationsManager.Abbreviations.Exists(abbr))
                 {
-                    DialogUtils.ShowTimedDialog(
-                                    Context.AppPanelManager.GetCurrentPanel() as Form,
-                                    "Add",
-                                    "Can't Save. Abbr for '" + abbr + "' already exists");
+                    showTimedDialog(R.GetString("Add"), String.Format(R.GetString("CantSaveAbbreviation"), abbr));
                 }
                 else
                 {
@@ -349,10 +332,10 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
                     confirm = true;
                 }
             }
-            else if (Context.AppAbbreviations.Exists(abbr) &&
+            else if (Context.AppAbbreviationsManager.Abbreviations.Exists(abbr) &&
                     String.Compare(abbr, InputAbbreviation.Mnemonic.Trim(), true) != 0)
             {
-                if (DialogUtils.Confirm("You are changing existing abbr " + tbAbbreviation.Text + " . Continue?"))
+                if (DialogUtils.Confirm(String.Format(R.GetString("YouAreChangingExistingAbbr"), tbAbbreviation.Text)))
                 {
                     saveAndQuit = true;
                 }
@@ -369,38 +352,16 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
 
                 if (confirm)
                 {
-                    quit = DialogUtils.Confirm("Save Abbreviation and Quit?");
+                    quit = DialogUtils.Confirm(R.GetString("SaveAndQuit"));
                 }
 
                 if (quit)
                 {
                     OutputAbbreviation = new Abbreviation(tbAbbreviation.Text, tbExpansion.Text, _mode);
-                    _dialogCommon.GetRootWidget();
                     Cancel = false;
                     Windows.CloseForm(this);
                 }
             }
-        }
-
-        /// <summary>
-        /// Initializes the class
-        /// </summary>
-        private void init()
-        {
-            _dialogCommon = new DialogCommon(this);
-
-            Add = false;
-            Delete = false;
-            OutputAbbreviation = new Abbreviation(String.Empty, String.Empty, Abbreviation.AbbreviationMode.Speak);
-            Cancel = false;
-
-            if (!_dialogCommon.Initialize())
-            {
-                Log.Debug("Initialization error");
-            }
-
-            Load += AbbreviationsEditorForm_Load;
-            FormClosing += AbbreviationsEditorForm_FormClosing;
         }
 
         /// <summary>
@@ -409,10 +370,12 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
         /// </summary>
         private void initWidgetSettings()
         {
-            var rootWidget = _dialogCommon.GetRootWidget();
+            var rootWidget = PanelCommon.RootWidget;
 
             _mode = InputAbbreviation.Mode;
-            (rootWidget.Finder.FindChild(pbTypeSpoken.Name) as CheckBoxWidget).SetState(_mode == Abbreviation.AbbreviationMode.Speak || _mode == Abbreviation.AbbreviationMode.None);
+            (rootWidget.Finder.FindChild(pbTypeSpoken.Name) as CheckBoxWidget).SetState(_mode == Abbreviation.AbbreviationMode.Speak ||
+                                                                                                _mode == Abbreviation.AbbreviationMode.None);
+
             (rootWidget.Finder.FindChild(pbTypeWritten.Name) as CheckBoxWidget).SetState(_mode == Abbreviation.AbbreviationMode.Write);
 
             Windows.SetText(tbAbbreviation, InputAbbreviation.Mnemonic);
@@ -429,11 +392,23 @@ namespace ACAT.Extensions.Default.FunctionalAgents.AbbreviationsAgent
         /// <param name="choice">choice made</param>
         private void radioSetAbbreviationMode(String widgetName, Boolean choice)
         {
-            var rootWidget = _dialogCommon.GetRootWidget();
+            var rootWidget = PanelCommon.RootWidget;
 
             (rootWidget.Finder.FindChild(pbTypeSpoken.Name) as CheckBoxWidget).SetState(false);
             (rootWidget.Finder.FindChild(pbTypeWritten.Name) as CheckBoxWidget).SetState(false);
             (rootWidget.Finder.FindChild(widgetName) as CheckBoxWidget).SetState(choice);
+        }
+
+        /// <summary>
+        /// Displays a timed dialog with the title and message
+        /// </summary>
+        /// <param name="title">title of the dialog</param>
+        /// <param name="message">message</param>
+        private void showTimedDialog(String title, String message)
+        {
+            _windowActiveWatchdog.Pause();
+            DialogUtils.ShowTimedDialog(this, title, message);
+            _windowActiveWatchdog.Resume();
         }
     }
 }

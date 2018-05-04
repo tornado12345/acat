@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="MenuPanel.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -68,7 +68,7 @@ namespace ACAT.Lib.Extension
     /// </summary>
     [DescriptorAttribute("6307D870-D90E-45ED-8A7E-43A3BA97D868",
                         "MenuPanel",
-                        "Menu with Icons and Text")]
+                        "AppMenu with Icons and Text")]
     public partial class MenuPanel : MenuPanelBase
     {
         /// <summary>
@@ -76,6 +76,14 @@ namespace ACAT.Lib.Extension
         /// commands, just call Commands.Add on this object
         /// </summary>
         protected Dispatcher commandDispatcher;
+
+        /// <summary>
+        /// Initializes a new instance of the class
+        /// </summary>
+        public MenuPanel()
+        {
+            
+        }
 
         /// <summary>
         /// Initializes a new instance of the class.

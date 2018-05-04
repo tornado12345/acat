@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="OutlookInspector2010.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,46 +18,11 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Windows.Automation;
 using ACAT.Lib.Core.AgentManagement;
 using ACAT.Lib.Core.Utility;
-using System.Diagnostics.CodeAnalysis;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Windows.Automation;
+using ACAT.ACATResources;
 
 namespace ACAT.Lib.Extension.AppAgents.Outlook
 {
@@ -139,7 +104,7 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
         }
 
         /// <summary>
-        /// Is the active window the details window that is 
+        /// Is the active window the details window that is
         /// displayed when the user clicks on a name in the
         /// address book search results
         /// </summary>
@@ -149,13 +114,11 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
         {
             var windowElement = AutomationElement.FromHandle(monitorInfo.FgHwnd);
 
-            var element = AgentUtils.FindElementByAutomationId(windowElement, "Edit", "ControlType.Edit", "2002", "First:") ??
-                            AgentUtils.FindElementByAutomationId(windowElement, "Edit", "ControlType.Edit", "2006", "Last:") ??
-                            AgentUtils.FindElementByAutomationId(windowElement, "Button", "ControlType.Button", "108", "Add to Contacts");
-
+            var element = AgentUtils.FindElementByAutomationId(windowElement, "Edit", "ControlType.Edit", "2002", R.GetString2("Outlook2010AddrBookFirstNameFieldLabel")) ??
+                            AgentUtils.FindElementByAutomationId(windowElement, "Edit", "ControlType.Edit", "2006", R.GetString2("Outlook2010AddrBookLastNameFieldLabel")) ??
+                            AgentUtils.FindElementByAutomationId(windowElement, "Button", "ControlType.Button", "108", R.GetString2("Outlook2010AddrBookAddToContactsButtonText"));
 
             return element != null;
-
         }
 
         /// <summary>
@@ -168,13 +131,13 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
         {
             var windowElement = AutomationElement.FromHandle(monitorInfo.FgHwnd);
 
-            var retVal = (windowElement != null) && (monitorInfo.Title.StartsWith("Address Book") &&
+            var retVal = (windowElement != null) && (monitorInfo.Title.ToLower().StartsWith(R.GetString2("Outlook2010TitleAddressBook").ToLower()) &&
                                                       AgentUtils.IsElementByAutomationId(windowElement, "OutexABCLS",
                                                           "ControlType.Window", String.Empty));
 
             if (retVal)
             {
-                if (AgentUtils.IsElementByAutomationId(monitorInfo.FocusedElement, "RichEdit20WPT", "ControlType.Edit", "101", "Search:"))
+                if (AgentUtils.IsElementByAutomationId(monitorInfo.FocusedElement, "RichEdit20WPT", "ControlType.Edit", "101", R.GetString2("Outlook2010AddrBookSearchFieldLabel")))
                 {
                     subType = OutlookControlSubType.AddressBookSearchField;
                 }
@@ -203,9 +166,9 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
             }
 
             var windowElement = AutomationElement.FromHandle(monitorInfo.FgHwnd);
-            var element = (AgentUtils.FindElementByAutomationId(windowElement, "SUPERGRID", ControlType.List, "4542", "All Attendees") ??
-                           AgentUtils.FindElementByAutomationId(windowElement, "Button", ControlType.Button, "4370", "Add Attendees...")) ??
-                          AgentUtils.FindElementByAutomationId(windowElement, "RIchEdit20WPT", ControlType.Edit, "4098", "Meeting Start Date:");
+            var element = (AgentUtils.FindElementByAutomationId(windowElement, "SUPERGRID", ControlType.List, "4542", R.GetString2("Outlook2010ApptSchedulingAllAttendeesList")) ??
+                           AgentUtils.FindElementByAutomationId(windowElement, "Button", ControlType.Button, "4370", R.GetString2("Outlook2010ApptSchedulingAddAttendeesButtonText"))) ??
+                          AgentUtils.FindElementByAutomationId(windowElement, "RIchEdit20WPT", ControlType.Edit, "4098", R.GetString2("Outlook2010ApptSchedulingMeetingStartDateFieldLabel"));
 
             retVal = (element != null);
 
@@ -227,10 +190,10 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
 
             if (element != null)
             {
-                Log.Debug("&&&&&& " + element.Current.Name);
-                return element.Current.Name.StartsWith("Calendar ");
+                Log.Debug(element.Current.Name);
+                return element.Current.Name.ToLower().StartsWith(R.GetString2("Outlook2010TitleCalendarPrefix").ToLower());
             }
-
+                
             return false;
         }
 
@@ -241,7 +204,8 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
         /// <returns>true if it is</returns>
         public bool IsContactsWindow(WindowActivityMonitorInfo monitorInfo)
         {
-            return (monitorInfo.Title.StartsWith("Contacts - ") && monitorInfo.Title.EndsWith("Microsoft Outlook"));
+            return monitorInfo.Title.ToLower().StartsWith(R.GetString2("Outlook2010TitleContactsPrefix").ToLower()) && 
+                monitorInfo.Title.ToLower().EndsWith(R.GetString2("Outlook2010TitleSuffix").ToLower());
         }
 
         /// <summary>
@@ -266,12 +230,12 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
                 return false;
             }
 
-            if (!monitorInfo.Title.Contains(" - Message (HTML)") &&
-                !monitorInfo.Title.Contains(" - Message (Plain Text)") &&
-                !monitorInfo.Title.Contains(" - Message (Rich Text)"))
+            if (!monitorInfo.Title.ToLower().Contains(R.GetString2("Outlook2010EmailTitleSuffixHTML").ToLower()) &&
+                !monitorInfo.Title.ToLower().Contains(R.GetString2("Outlook2010EmailTitleSuffixPlainText").ToLower()) &&
+                !monitorInfo.Title.ToLower().Contains(R.GetString2("Outlook2010EmailTitleSuffixRichText").ToLower()))
             {
                 Log.Debug("Title: " + monitorInfo.Title);
-                Log.Debug("****  TITLE DOES NOT MATCH.  RETURNING ");
+                Log.Debug("Title does not match. Returning ");
                 return false;
             }
 
@@ -350,7 +314,8 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
         /// <returns>true if it is</returns>
         public bool IsNotesWindow(WindowActivityMonitorInfo monitorInfo)
         {
-            return (monitorInfo.Title.StartsWith("Notes - ") && monitorInfo.Title.EndsWith("Microsoft Outlook"));
+            return monitorInfo.Title.ToLower().StartsWith(R.GetString2("Outlook2010TitleNotesPrefix").ToLower()) && 
+                        monitorInfo.Title.ToLower().EndsWith(R.GetString2("Outlook2010TitleSuffix").ToLower());
         }
 
         /// <summary>
@@ -373,14 +338,14 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
             }
 
             var windowElement = AutomationElement.FromHandle(monitorInfo.FgHwnd);
-            var element = AgentUtils.FindElementByAutomationId(windowElement, "RichEdit20WPT", ControlType.ComboBox, "4098", "Start Date:") ??
-                          AgentUtils.FindElementByAutomationId(windowElement, "RichEdit20WPT", ControlType.Edit, "4100", "Subject:");
+            var element = AgentUtils.FindElementByAutomationId(windowElement, "RichEdit20WPT", ControlType.ComboBox, "4098", R.GetString2("Outlook2010OpenAppointmentStartDateFieldLabel")) ??
+                          AgentUtils.FindElementByAutomationId(windowElement, "RichEdit20WPT", ControlType.Edit, "4100", R.GetString2("Outlook2010OpenAppointmentSubjectFieldLabel"));
 
             retVal = (element != null);
 
             if (retVal)
             {
-                if (AgentUtils.IsElementByAutomationId(monitorInfo.FocusedElement, "RichEdit20WPT", "ControlType.Edit", "4100", "Subject:"))
+                if (AgentUtils.IsElementByAutomationId(monitorInfo.FocusedElement, "RichEdit20WPT", "ControlType.Edit", "4100", R.GetString2("Outlook2010OpenAppointmentSubjectFieldLabel")))
                 {
                     subType = OutlookControlSubType.AppointmentSubjectField;
                 }
@@ -414,9 +379,13 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
             }
 
             var windowElement = AutomationElement.FromHandle(monitorInfo.FgHwnd);
-            var element = (AgentUtils.FindElementByAutomationId(windowElement, "RichEdit20WPT", ControlType.Edit, "4481", "Company:") ??
-                           AgentUtils.FindElementByAutomationId(windowElement, "RichEdit20WPT", ControlType.Edit, "4480", "Job Title:")) ??
-                          AgentUtils.FindElementByAutomationId(windowElement, "RichEdit20WPT", ControlType.Edit, "4096", "FullName");
+            var element =
+                (AgentUtils.FindElementByAutomationId(windowElement, "RichEdit20WPT", ControlType.Edit, "4481",
+                    R.GetString2("Outlook2010OpenContactCompanyFieldLabel")) ??
+                 AgentUtils.FindElementByAutomationId(windowElement, "RichEdit20WPT", ControlType.Edit, "4480",
+                     R.GetString2("Outlook2010OpenContactJobTitleFieldLabel"))) ??
+                AgentUtils.FindElementByAutomationId(windowElement, "RichEdit20WPT", ControlType.Edit, "4096",
+                    R.GetString2("Outlook2010OpenContactFullNameFieldLabel"));
 
             retVal = (element != null);
 
@@ -488,15 +457,15 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
                 return false;
             }
 
-            var element = (AgentUtils.FindElementByAutomationId(windowElement, "REComboBox20W", ControlType.ComboBox, "4481", "Status:") ??
-                           AgentUtils.FindElementByAutomationId(windowElement, "REComboBox20W", ControlType.ComboBox, "4480", "Priority:")) ??
-                          AgentUtils.FindElementByAutomationId(windowElement, "RichEdit20WPT", ControlType.Edit, "4112", "% Complete:");
+            var element = (AgentUtils.FindElementByAutomationId(windowElement, "REComboBox20W", ControlType.ComboBox, "4481", R.GetString2("Outlook2010OpenTaskStatusFieldLabel")) ??
+                           AgentUtils.FindElementByAutomationId(windowElement, "REComboBox20W", ControlType.ComboBox, "4480", R.GetString2("Outlook2010OpenTaskPriorityFieldLabel"))) ??
+                          AgentUtils.FindElementByAutomationId(windowElement, "RichEdit20WPT", ControlType.Edit, "4112", R.GetString2("Outlook2010OpenTaskPercentCompleteFieldLabel"));
 
             retVal = (element != null);
 
             if (retVal)
             {
-                if (AgentUtils.IsElementByAutomationId(monitorInfo.FocusedElement, "RichEdit20WPT", "ControlType.Edit", "4097", "Subject:"))
+                if (AgentUtils.IsElementByAutomationId(monitorInfo.FocusedElement, "RichEdit20WPT", "ControlType.Edit", "4097", R.GetString2("Outlook2010OpenTaskSubjectFieldLabel")))
                 {
                     subType = OutlookControlSubType.TaskSubjectField;
                 }
@@ -518,7 +487,10 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
         /// <returns>true if it is</returns>
         public bool IsTasksWindow(WindowActivityMonitorInfo monitorInfo)
         {
-            return ((monitorInfo.Title.StartsWith("Tasks - ") || monitorInfo.Title.StartsWith("To-Do List")) && monitorInfo.Title.EndsWith("Microsoft Outlook"));
+            var title = monitorInfo.Title.ToLower();
+            return ((title.StartsWith(R.GetString2("Outlook2010TitleTasksPrefix").ToLower()) ||
+                    title.StartsWith(R.GetString2("Outlook2010TitleTodoPrefix").ToLower())) &&
+                    title.EndsWith(R.GetString2("Outlook2010TitleSuffix").ToLower()));
         }
     }
 }

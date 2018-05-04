@@ -1,4 +1,4 @@
-﻿namespace RunAsAdminTest
+﻿namespace PresageInstaller
 {
     partial class Form1
     {

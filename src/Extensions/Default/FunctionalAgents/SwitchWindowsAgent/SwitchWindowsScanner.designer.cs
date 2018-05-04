@@ -35,6 +35,9 @@
             this.SearchFilter = new System.Windows.Forms.TextBox();
             this.WindowList = new System.Windows.Forms.TableLayoutPanel();
             this.OptionsPanel = new System.Windows.Forms.TableLayoutPanel();
+            this.statusStrip1 = new System.Windows.Forms.StatusStrip();
+            this.toolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.SearchFilterIcon = new ACAT.Lib.Core.WidgetManagement.ScannerButtonControl();
             this.Item9 = new ACAT.Lib.Core.WidgetManagement.ScannerButtonControl();
             this.Item8 = new ACAT.Lib.Core.WidgetManagement.ScannerButtonControl();
             this.Item7 = new ACAT.Lib.Core.WidgetManagement.ScannerButtonControl();
@@ -46,7 +49,6 @@
             this.Item1 = new ACAT.Lib.Core.WidgetManagement.ScannerButtonControl();
             this.Item2 = new ACAT.Lib.Core.WidgetManagement.ScannerButtonControl();
             this.ButtonSearchClear = new ACAT.Lib.Core.WidgetManagement.ScannerButtonControl();
-            this.ButtonSearch = new ACAT.Lib.Core.WidgetManagement.ScannerButtonControl();
             this.ButtonPageDown = new ACAT.Lib.Core.WidgetManagement.ScannerButtonControl();
             this.ButtonPageUp = new ACAT.Lib.Core.WidgetManagement.ScannerButtonControl();
             this.ButtonClose = new ACAT.Lib.Core.WidgetManagement.ScannerButtonControl();
@@ -55,6 +57,7 @@
             this.TopStatusBar.SuspendLayout();
             this.WindowList.SuspendLayout();
             this.OptionsPanel.SuspendLayout();
+            this.statusStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
             // ScannerBorder
@@ -74,37 +77,39 @@
             this.ScannerBorder.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 10F));
             this.ScannerBorder.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 10.97973F));
             this.ScannerBorder.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 79.05405F));
-            this.ScannerBorder.Size = new System.Drawing.Size(735, 589);
+            this.ScannerBorder.Size = new System.Drawing.Size(717, 570);
             this.ScannerBorder.TabIndex = 19;
             // 
             // TopStatusBar
             // 
             this.TopStatusBar.BackColor = System.Drawing.Color.Black;
-            this.TopStatusBar.ColumnCount = 3;
-            this.TopStatusBar.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
+            this.TopStatusBar.ColumnCount = 4;
             this.TopStatusBar.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 8F));
             this.TopStatusBar.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 42F));
-            this.TopStatusBar.Controls.Add(this.PageNumber, 0, 0);
-            this.TopStatusBar.Controls.Add(this.SortOrderIcon, 0, 0);
-            this.TopStatusBar.Controls.Add(this.SearchFilter, 0, 0);
+            this.TopStatusBar.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 8F));
+            this.TopStatusBar.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 42F));
+            this.TopStatusBar.Controls.Add(this.PageNumber, 3, 0);
+            this.TopStatusBar.Controls.Add(this.SortOrderIcon, 2, 0);
+            this.TopStatusBar.Controls.Add(this.SearchFilter, 1, 0);
+            this.TopStatusBar.Controls.Add(this.SearchFilterIcon, 0, 0);
             this.TopStatusBar.Dock = System.Windows.Forms.DockStyle.Fill;
             this.TopStatusBar.Location = new System.Drawing.Point(0, 0);
             this.TopStatusBar.Margin = new System.Windows.Forms.Padding(0);
             this.TopStatusBar.Name = "TopStatusBar";
-            this.TopStatusBar.Padding = new System.Windows.Forms.Padding(10, 0, 0, 0);
+            this.TopStatusBar.Padding = new System.Windows.Forms.Padding(5, 0, 0, 0);
             this.TopStatusBar.RowCount = 1;
             this.TopStatusBar.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.TopStatusBar.Size = new System.Drawing.Size(735, 58);
+            this.TopStatusBar.Size = new System.Drawing.Size(717, 56);
             this.TopStatusBar.TabIndex = 39;
             // 
             // PageNumber
             // 
             this.PageNumber.BackColor = System.Drawing.Color.Black;
             this.PageNumber.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.PageNumber.Location = new System.Drawing.Point(430, 0);
+            this.PageNumber.Location = new System.Drawing.Point(416, 0);
             this.PageNumber.Margin = new System.Windows.Forms.Padding(0);
             this.PageNumber.Name = "PageNumber";
-            this.PageNumber.Size = new System.Drawing.Size(305, 58);
+            this.PageNumber.Size = new System.Drawing.Size(301, 56);
             this.PageNumber.TabIndex = 42;
             this.PageNumber.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
@@ -112,10 +117,10 @@
             // 
             this.SortOrderIcon.BackColor = System.Drawing.Color.Black;
             this.SortOrderIcon.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.SortOrderIcon.Location = new System.Drawing.Point(372, 0);
+            this.SortOrderIcon.Location = new System.Drawing.Point(360, 0);
             this.SortOrderIcon.Margin = new System.Windows.Forms.Padding(0);
             this.SortOrderIcon.Name = "SortOrderIcon";
-            this.SortOrderIcon.Size = new System.Drawing.Size(58, 58);
+            this.SortOrderIcon.Size = new System.Drawing.Size(56, 56);
             this.SortOrderIcon.TabIndex = 41;
             this.SortOrderIcon.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
@@ -125,10 +130,10 @@
             this.SearchFilter.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.SearchFilter.Dock = System.Windows.Forms.DockStyle.Fill;
             this.SearchFilter.Font = new System.Drawing.Font("Arial", 30F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.SearchFilter.Location = new System.Drawing.Point(10, 0);
-            this.SearchFilter.Margin = new System.Windows.Forms.Padding(0);
+            this.SearchFilter.Location = new System.Drawing.Point(61, 5);
+            this.SearchFilter.Margin = new System.Windows.Forms.Padding(0, 5, 0, 0);
             this.SearchFilter.Name = "SearchFilter";
-            this.SearchFilter.Size = new System.Drawing.Size(362, 46);
+            this.SearchFilter.Size = new System.Drawing.Size(299, 46);
             this.SearchFilter.TabIndex = 40;
             // 
             // WindowList
@@ -148,7 +153,7 @@
             this.WindowList.Controls.Add(this.Item10, 0, 9);
             this.WindowList.Controls.Add(this.Item1, 0, 0);
             this.WindowList.Controls.Add(this.Item2, 0, 1);
-            this.WindowList.Location = new System.Drawing.Point(3, 125);
+            this.WindowList.Location = new System.Drawing.Point(3, 121);
             this.WindowList.Name = "WindowList";
             this.WindowList.RowCount = 10;
             this.WindowList.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 10F));
@@ -162,7 +167,7 @@
             this.WindowList.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 10F));
             this.WindowList.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 10F));
             this.WindowList.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 20F));
-            this.WindowList.Size = new System.Drawing.Size(729, 461);
+            this.WindowList.Size = new System.Drawing.Size(711, 446);
             this.WindowList.TabIndex = 40;
             // 
             // OptionsPanel
@@ -175,19 +180,52 @@
             this.OptionsPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 16.66667F));
             this.OptionsPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 16.66667F));
             this.OptionsPanel.Controls.Add(this.ButtonSearchClear, 4, 0);
-            this.OptionsPanel.Controls.Add(this.ButtonSearch, 3, 0);
-            this.OptionsPanel.Controls.Add(this.ButtonPageDown, 2, 0);
-            this.OptionsPanel.Controls.Add(this.ButtonPageUp, 1, 0);
+            this.OptionsPanel.Controls.Add(this.ButtonPageDown, 1, 0);
+            this.OptionsPanel.Controls.Add(this.ButtonPageUp, 2, 0);
             this.OptionsPanel.Controls.Add(this.ButtonClose, 0, 0);
-            this.OptionsPanel.Controls.Add(this.ButtonSort, 5, 0);
+            this.OptionsPanel.Controls.Add(this.ButtonSort, 3, 0);
             this.OptionsPanel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.OptionsPanel.Location = new System.Drawing.Point(0, 58);
+            this.OptionsPanel.Location = new System.Drawing.Point(0, 56);
             this.OptionsPanel.Margin = new System.Windows.Forms.Padding(0);
             this.OptionsPanel.Name = "OptionsPanel";
             this.OptionsPanel.RowCount = 1;
             this.OptionsPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.OptionsPanel.Size = new System.Drawing.Size(735, 64);
+            this.OptionsPanel.Size = new System.Drawing.Size(717, 62);
             this.OptionsPanel.TabIndex = 41;
+            // 
+            // statusStrip1
+            // 
+            this.statusStrip1.ImageScalingSize = new System.Drawing.Size(20, 20);
+            this.statusStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.toolStripStatusLabel});
+            this.statusStrip1.Location = new System.Drawing.Point(0, 570);
+            this.statusStrip1.Name = "statusStrip1";
+            this.statusStrip1.Padding = new System.Windows.Forms.Padding(1, 0, 10, 0);
+            this.statusStrip1.Size = new System.Drawing.Size(717, 27);
+            this.statusStrip1.TabIndex = 20;
+            this.statusStrip1.Text = "statusStrip1";
+            // 
+            // toolStripStatusLabel
+            // 
+            this.toolStripStatusLabel.BackColor = System.Drawing.Color.Transparent;
+            this.toolStripStatusLabel.Font = new System.Drawing.Font("Arial", 13.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.toolStripStatusLabel.ForeColor = System.Drawing.Color.Black;
+            this.toolStripStatusLabel.Name = "toolStripStatusLabel";
+            this.toolStripStatusLabel.Size = new System.Drawing.Size(191, 22);
+            this.toolStripStatusLabel.Text = "toolStripStatusLabel1";
+            // 
+            // SearchFilterIcon
+            // 
+            this.SearchFilterIcon.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
+            this.SearchFilterIcon.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.SearchFilterIcon.Location = new System.Drawing.Point(5, 0);
+            this.SearchFilterIcon.Margin = new System.Windows.Forms.Padding(0, 0, 3, 0);
+            this.SearchFilterIcon.Name = "SearchFilterIcon";
+            this.SearchFilterIcon.Size = new System.Drawing.Size(53, 56);
+            this.SearchFilterIcon.TabIndex = 43;
+            this.SearchFilterIcon.Text = ".";
+            this.SearchFilterIcon.UseMnemonic = false;
+            this.SearchFilterIcon.UseVisualStyleBackColor = true;
             // 
             // Item9
             // 
@@ -195,10 +233,10 @@
             this.Item9.Dock = System.Windows.Forms.DockStyle.Fill;
             this.Item9.FlatAppearance.BorderSize = 0;
             this.Item9.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.Item9.Location = new System.Drawing.Point(0, 368);
+            this.Item9.Location = new System.Drawing.Point(0, 352);
             this.Item9.Margin = new System.Windows.Forms.Padding(0);
             this.Item9.Name = "Item9";
-            this.Item9.Size = new System.Drawing.Size(729, 46);
+            this.Item9.Size = new System.Drawing.Size(711, 44);
             this.Item9.TabIndex = 27;
             this.Item9.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.Item9.UseMnemonic = false;
@@ -210,10 +248,10 @@
             this.Item8.Dock = System.Windows.Forms.DockStyle.Fill;
             this.Item8.FlatAppearance.BorderSize = 0;
             this.Item8.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.Item8.Location = new System.Drawing.Point(0, 322);
+            this.Item8.Location = new System.Drawing.Point(0, 308);
             this.Item8.Margin = new System.Windows.Forms.Padding(0);
             this.Item8.Name = "Item8";
-            this.Item8.Size = new System.Drawing.Size(729, 46);
+            this.Item8.Size = new System.Drawing.Size(711, 44);
             this.Item8.TabIndex = 26;
             this.Item8.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.Item8.UseMnemonic = false;
@@ -225,10 +263,10 @@
             this.Item7.Dock = System.Windows.Forms.DockStyle.Fill;
             this.Item7.FlatAppearance.BorderSize = 0;
             this.Item7.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.Item7.Location = new System.Drawing.Point(0, 276);
+            this.Item7.Location = new System.Drawing.Point(0, 264);
             this.Item7.Margin = new System.Windows.Forms.Padding(0);
             this.Item7.Name = "Item7";
-            this.Item7.Size = new System.Drawing.Size(729, 46);
+            this.Item7.Size = new System.Drawing.Size(711, 44);
             this.Item7.TabIndex = 25;
             this.Item7.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.Item7.UseMnemonic = false;
@@ -240,10 +278,10 @@
             this.Item6.Dock = System.Windows.Forms.DockStyle.Fill;
             this.Item6.FlatAppearance.BorderSize = 0;
             this.Item6.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.Item6.Location = new System.Drawing.Point(0, 230);
+            this.Item6.Location = new System.Drawing.Point(0, 220);
             this.Item6.Margin = new System.Windows.Forms.Padding(0);
             this.Item6.Name = "Item6";
-            this.Item6.Size = new System.Drawing.Size(729, 46);
+            this.Item6.Size = new System.Drawing.Size(711, 44);
             this.Item6.TabIndex = 24;
             this.Item6.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.Item6.UseMnemonic = false;
@@ -255,10 +293,10 @@
             this.Item5.Dock = System.Windows.Forms.DockStyle.Fill;
             this.Item5.FlatAppearance.BorderSize = 0;
             this.Item5.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.Item5.Location = new System.Drawing.Point(0, 184);
+            this.Item5.Location = new System.Drawing.Point(0, 176);
             this.Item5.Margin = new System.Windows.Forms.Padding(0);
             this.Item5.Name = "Item5";
-            this.Item5.Size = new System.Drawing.Size(729, 46);
+            this.Item5.Size = new System.Drawing.Size(711, 44);
             this.Item5.TabIndex = 23;
             this.Item5.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.Item5.UseMnemonic = false;
@@ -270,10 +308,10 @@
             this.Item4.Dock = System.Windows.Forms.DockStyle.Fill;
             this.Item4.FlatAppearance.BorderSize = 0;
             this.Item4.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.Item4.Location = new System.Drawing.Point(0, 138);
+            this.Item4.Location = new System.Drawing.Point(0, 132);
             this.Item4.Margin = new System.Windows.Forms.Padding(0);
             this.Item4.Name = "Item4";
-            this.Item4.Size = new System.Drawing.Size(729, 46);
+            this.Item4.Size = new System.Drawing.Size(711, 44);
             this.Item4.TabIndex = 22;
             this.Item4.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.Item4.UseMnemonic = false;
@@ -285,10 +323,10 @@
             this.Item3.Dock = System.Windows.Forms.DockStyle.Fill;
             this.Item3.FlatAppearance.BorderSize = 0;
             this.Item3.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.Item3.Location = new System.Drawing.Point(0, 92);
+            this.Item3.Location = new System.Drawing.Point(0, 88);
             this.Item3.Margin = new System.Windows.Forms.Padding(0);
             this.Item3.Name = "Item3";
-            this.Item3.Size = new System.Drawing.Size(729, 46);
+            this.Item3.Size = new System.Drawing.Size(711, 44);
             this.Item3.TabIndex = 21;
             this.Item3.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.Item3.UseMnemonic = false;
@@ -302,10 +340,10 @@
             this.Item10.FlatAppearance.BorderColor = System.Drawing.Color.White;
             this.Item10.FlatAppearance.BorderSize = 0;
             this.Item10.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.Item10.Location = new System.Drawing.Point(0, 414);
+            this.Item10.Location = new System.Drawing.Point(0, 396);
             this.Item10.Margin = new System.Windows.Forms.Padding(0);
             this.Item10.Name = "Item10";
-            this.Item10.Size = new System.Drawing.Size(729, 47);
+            this.Item10.Size = new System.Drawing.Size(711, 50);
             this.Item10.TabIndex = 19;
             this.Item10.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.Item10.UseMnemonic = false;
@@ -322,7 +360,7 @@
             this.Item1.Location = new System.Drawing.Point(0, 0);
             this.Item1.Margin = new System.Windows.Forms.Padding(0);
             this.Item1.Name = "Item1";
-            this.Item1.Size = new System.Drawing.Size(729, 46);
+            this.Item1.Size = new System.Drawing.Size(711, 44);
             this.Item1.TabIndex = 18;
             this.Item1.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.Item1.UseMnemonic = false;
@@ -334,10 +372,10 @@
             this.Item2.Dock = System.Windows.Forms.DockStyle.Fill;
             this.Item2.FlatAppearance.BorderSize = 0;
             this.Item2.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.Item2.Location = new System.Drawing.Point(0, 46);
+            this.Item2.Location = new System.Drawing.Point(0, 44);
             this.Item2.Margin = new System.Windows.Forms.Padding(0);
             this.Item2.Name = "Item2";
-            this.Item2.Size = new System.Drawing.Size(729, 46);
+            this.Item2.Size = new System.Drawing.Size(711, 44);
             this.Item2.TabIndex = 20;
             this.Item2.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.Item2.UseMnemonic = false;
@@ -349,29 +387,14 @@
             this.ButtonSearchClear.Dock = System.Windows.Forms.DockStyle.Fill;
             this.ButtonSearchClear.FlatAppearance.BorderColor = System.Drawing.Color.Gray;
             this.ButtonSearchClear.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.ButtonSearchClear.Location = new System.Drawing.Point(491, 3);
+            this.ButtonSearchClear.Location = new System.Drawing.Point(479, 3);
             this.ButtonSearchClear.Name = "ButtonSearchClear";
-            this.ButtonSearchClear.Size = new System.Drawing.Size(116, 58);
+            this.ButtonSearchClear.Size = new System.Drawing.Size(113, 56);
             this.ButtonSearchClear.TabIndex = 4;
             this.ButtonSearchClear.TabStop = false;
             this.ButtonSearchClear.Text = ".";
             this.ButtonSearchClear.UseMnemonic = false;
             this.ButtonSearchClear.UseVisualStyleBackColor = true;
-            // 
-            // ButtonSearch
-            // 
-            this.ButtonSearch.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
-            this.ButtonSearch.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.ButtonSearch.FlatAppearance.BorderColor = System.Drawing.Color.Gray;
-            this.ButtonSearch.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.ButtonSearch.Location = new System.Drawing.Point(369, 3);
-            this.ButtonSearch.Name = "ButtonSearch";
-            this.ButtonSearch.Size = new System.Drawing.Size(116, 58);
-            this.ButtonSearch.TabIndex = 3;
-            this.ButtonSearch.TabStop = false;
-            this.ButtonSearch.Text = ".";
-            this.ButtonSearch.UseMnemonic = false;
-            this.ButtonSearch.UseVisualStyleBackColor = true;
             // 
             // ButtonPageDown
             // 
@@ -379,9 +402,9 @@
             this.ButtonPageDown.Dock = System.Windows.Forms.DockStyle.Fill;
             this.ButtonPageDown.FlatAppearance.BorderColor = System.Drawing.Color.Gray;
             this.ButtonPageDown.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.ButtonPageDown.Location = new System.Drawing.Point(247, 3);
+            this.ButtonPageDown.Location = new System.Drawing.Point(122, 3);
             this.ButtonPageDown.Name = "ButtonPageDown";
-            this.ButtonPageDown.Size = new System.Drawing.Size(116, 58);
+            this.ButtonPageDown.Size = new System.Drawing.Size(113, 56);
             this.ButtonPageDown.TabIndex = 2;
             this.ButtonPageDown.TabStop = false;
             this.ButtonPageDown.Text = ".";
@@ -394,9 +417,9 @@
             this.ButtonPageUp.Dock = System.Windows.Forms.DockStyle.Fill;
             this.ButtonPageUp.FlatAppearance.BorderColor = System.Drawing.Color.Gray;
             this.ButtonPageUp.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.ButtonPageUp.Location = new System.Drawing.Point(125, 3);
+            this.ButtonPageUp.Location = new System.Drawing.Point(241, 3);
             this.ButtonPageUp.Name = "ButtonPageUp";
-            this.ButtonPageUp.Size = new System.Drawing.Size(116, 58);
+            this.ButtonPageUp.Size = new System.Drawing.Size(113, 56);
             this.ButtonPageUp.TabIndex = 1;
             this.ButtonPageUp.TabStop = false;
             this.ButtonPageUp.Text = ".";
@@ -411,7 +434,7 @@
             this.ButtonClose.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.ButtonClose.Location = new System.Drawing.Point(3, 3);
             this.ButtonClose.Name = "ButtonClose";
-            this.ButtonClose.Size = new System.Drawing.Size(116, 58);
+            this.ButtonClose.Size = new System.Drawing.Size(113, 56);
             this.ButtonClose.TabIndex = 0;
             this.ButtonClose.TabStop = false;
             this.ButtonClose.Text = ".";
@@ -424,9 +447,9 @@
             this.ButtonSort.Dock = System.Windows.Forms.DockStyle.Fill;
             this.ButtonSort.FlatAppearance.BorderColor = System.Drawing.Color.Gray;
             this.ButtonSort.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.ButtonSort.Location = new System.Drawing.Point(613, 3);
+            this.ButtonSort.Location = new System.Drawing.Point(360, 3);
             this.ButtonSort.Name = "ButtonSort";
-            this.ButtonSort.Size = new System.Drawing.Size(119, 58);
+            this.ButtonSort.Size = new System.Drawing.Size(113, 56);
             this.ButtonSort.TabIndex = 5;
             this.ButtonSort.Text = ".";
             this.ButtonSort.UseMnemonic = false;
@@ -437,8 +460,10 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.White;
-            this.ClientSize = new System.Drawing.Size(735, 589);
+            this.ClientSize = new System.Drawing.Size(717, 597);
+            this.ControlBox = false;
             this.Controls.Add(this.ScannerBorder);
+            this.Controls.Add(this.statusStrip1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
@@ -452,7 +477,10 @@
             this.TopStatusBar.PerformLayout();
             this.WindowList.ResumeLayout(false);
             this.OptionsPanel.ResumeLayout(false);
+            this.statusStrip1.ResumeLayout(false);
+            this.statusStrip1.PerformLayout();
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 
@@ -476,11 +504,13 @@
         private Lib.Core.WidgetManagement.ScannerButtonControl Item2;
         private System.Windows.Forms.TableLayoutPanel OptionsPanel;
         private Lib.Core.WidgetManagement.ScannerButtonControl ButtonSearchClear;
-        private Lib.Core.WidgetManagement.ScannerButtonControl ButtonSearch;
         private Lib.Core.WidgetManagement.ScannerButtonControl ButtonPageDown;
         private Lib.Core.WidgetManagement.ScannerButtonControl ButtonPageUp;
         private Lib.Core.WidgetManagement.ScannerButtonControl ButtonClose;
         private Lib.Core.WidgetManagement.ScannerButtonControl ButtonSort;
+        private Lib.Core.WidgetManagement.ScannerButtonControl SearchFilterIcon;
+        private System.Windows.Forms.StatusStrip statusStrip1;
+        private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel;
     }
 }
 

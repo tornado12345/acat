@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="ActuatorEx.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,51 +18,16 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
+using ACAT.Lib.Core.Utility;
 using System;
 using System.ComponentModel;
-using System.Diagnostics.CodeAnalysis;
 using System.Threading;
-using ACAT.Lib.Core.Utility;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System.Windows.Forms;
 
 namespace ACAT.Lib.Core.ActuatorManagement
 {
     /// <summary>
-    /// This is a wrapper class for the Actuator.  It has helper functions 
+    /// This is a wrapper class for the Actuator.  It has helper functions
     /// to handler user interaction for calibration.  It displays the calibration
     /// form while the actuator is calibrating. This class can be extended to add
     /// addtional functions.
@@ -78,6 +43,16 @@ namespace ACAT.Lib.Core.ActuatorManagement
         public IActuator SourceActuator;
 
         /// <summary>
+        /// Event is set when the background task is done
+        /// </summary>
+        private readonly ManualResetEvent _bgTaskDoneEvent = new ManualResetEvent(true);
+
+        /// <summary>
+        /// This event is set when the calibration has concluded
+        /// </summary>
+        private readonly ManualResetEvent _calibrationDoneEvent = new ManualResetEvent(true);
+
+        /// <summary>
         /// Has the calibartion form been created
         /// </summary>
         private readonly ManualResetEvent _formCreatedEvent = new ManualResetEvent(false);
@@ -86,16 +61,6 @@ namespace ACAT.Lib.Core.ActuatorManagement
         /// Background worker
         /// </summary>
         private Worker _bgWorker;
-
-        /// <summary>
-        /// Event is set when the background task is done
-        /// </summary>
-        private ManualResetEvent _bgTaskDoneEvent = new ManualResetEvent(true);
-
-        /// <summary>
-        /// This event is set when the calibration has concluded
-        /// </summary>
-        private ManualResetEvent _calibrationDoneEvent = new ManualResetEvent(true);
 
         /// <summary>
         /// The calibration form object
@@ -147,31 +112,15 @@ namespace ACAT.Lib.Core.ActuatorManagement
         }
 
         /// <summary>
-        /// Call this function to display the settings dialog for the
-        /// actuator
-        /// </summary>
-        public void OnDialogRequest()
-        {
-            var form = SourceActuator.GetSettingsDialog();
-
-            if (form == null)
-            {
-                return;
-            }
-
-            form.ShowDialog();
-        }
-
-        /// <summary>
         /// Call this function to indicate end of calibration.  If error message
-        /// is not empty, assumes there was an error and displays 
+        /// is not empty, assumes there was an error and displays
         /// the error dialog
         /// </summary>
         /// <param name="errorMessage">error message</param>
         /// <param name="enableConfigure">should the config button be enabled</param>
         public void OnEndCalibration(String errorMessage = "", bool enableConfigure = true)
         {
-            Log.Debug("**** END CALIBRATION");
+            Log.Debug();
 
             if (!String.IsNullOrEmpty((errorMessage)))
             {
@@ -180,12 +129,14 @@ namespace ACAT.Lib.Core.ActuatorManagement
                 OnError(errorMessage, enableConfigure);
             }
 
+            Log.Debug("Calling closeCalibrationForm()");
+
             closeCalibrationForm();
             _calibrationDoneEvent.Set();
         }
 
         /// <summary>
-        /// Invoked to indicate there was an error.  Displays the 
+        /// Invoked to indicate there was an error.  Displays the
         /// error form as a dialog
         /// </summary>
         /// <param name="message">error message</param>
@@ -237,11 +188,11 @@ namespace ACAT.Lib.Core.ActuatorManagement
         /// <param name="prompt">any message to display?</param>
         /// <param name="timeout">calibration timeout</param>
         /// <param name="enableConfigure">should calibration button be enabled?</param>
-        public void UpdateCalibrationStatus(Windows.WindowPosition position, String caption, String prompt, int timeout, bool enableConfigure)
+        public void UpdateCalibrationStatus(Windows.WindowPosition position, String caption, String prompt, int timeout, bool enableConfigure, String buttonText)
         {
             if (calibrationForm == null)
             {
-                showCalibrationForm(position, caption, prompt, timeout, enableConfigure);
+                showCalibrationForm(position, caption, prompt, timeout, enableConfigure, buttonText);
             }
             else if (calibrationForm.Visible)
             {
@@ -292,13 +243,35 @@ namespace ACAT.Lib.Core.ActuatorManagement
                 Prompt = worker.Prompt,
                 SourceActuator = SourceActuator,
                 Timeout = worker.Timeout,
-                EnableConfigure = worker.EnableConfigure
+                EnableConfigure = worker.EnableConfigure,
+                ButtonText = worker.ButtonText
             };
 
             Windows.SetWindowPosition(calibrationForm, worker.Position);
             _formCreatedEvent.Set();
-            calibrationForm.ShowDialog();
-            calibrationForm.Dispose();
+            if (calibrationForm != null)
+            {
+                Log.Debug("Calling calibrationform.ShowDialog");
+                DialogResult result = calibrationForm.ShowDialog();
+                Log.Debug("Result: " + result);
+
+                // user closed the calibration form
+                if (result == DialogResult.Cancel)
+                {
+                    SourceActuator.OnCalibrationCanceled();
+                    _calibrationDoneEvent.Set();
+                }
+            }
+            else
+            {
+                Log.Debug("calibration form IS NULL!!!");
+            }
+
+            if (calibrationForm != null)
+            {
+                calibrationForm.Dispose();
+                calibrationForm = null;
+            }
         }
 
         /// <summary>
@@ -308,7 +281,7 @@ namespace ACAT.Lib.Core.ActuatorManagement
         /// <param name="e">event args</param>
         private void bgWorker_RunCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-            Log.Debug("RUN COMPLETED!!");
+            Log.Debug();
             _bgTaskDoneEvent.Set();
         }
 
@@ -321,6 +294,7 @@ namespace ACAT.Lib.Core.ActuatorManagement
             {
                 if (calibrationForm != null)
                 {
+                    Log.Debug("Closing calibration form, calling Dismiss()");
                     calibrationForm.Dismiss();
                     calibrationForm = null;
                 }
@@ -356,7 +330,7 @@ namespace ACAT.Lib.Core.ActuatorManagement
         /// <param name="prompt">any message to display?</param>
         /// <param name="timeout">calibration timeout</param>
         /// <param name="enableConfigure">should calibration button be enabled?</param>
-        private void showCalibrationForm(Windows.WindowPosition position, String caption, String prompt, int timeout, bool enableConfigure)
+        private void showCalibrationForm(Windows.WindowPosition position, String caption, String prompt, int timeout, bool enableConfigure, String buttonText)
         {
             _bgTaskDoneEvent.Reset();
             _bgWorker = new Worker
@@ -367,7 +341,8 @@ namespace ACAT.Lib.Core.ActuatorManagement
                 EnableConfigure = enableConfigure,
                 WorkerSupportsCancellation = true,
                 WorkerReportsProgress = false,
-                Position = position
+                Position = position,
+                ButtonText = buttonText
             };
 
             _bgWorker.RunWorkerCompleted += bgWorker_RunCompleted;
@@ -379,12 +354,14 @@ namespace ACAT.Lib.Core.ActuatorManagement
         }
 
         /// <summary>
-        /// Extends the background worker class to store 
+        /// Extends the background worker class to store
         /// properties for the calibration form which is displayed
         /// by the background worker
         /// </summary>
         private class Worker : BackgroundWorker
         {
+            public String ButtonText { get; set; }
+
             public String Caption { get; set; }
 
             public bool EnableConfigure { get; set; }

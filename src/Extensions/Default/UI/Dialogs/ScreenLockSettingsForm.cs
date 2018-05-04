@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="ScreenLockSettingsForm.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,51 +18,16 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Security.Permissions;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.PanelManagement;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Core.WidgetManagement;
 using ACAT.Lib.Core.Widgets;
 using ACAT.Lib.Extension;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Collections.Generic;
+using System.Security.Permissions;
+using System.Windows.Forms;
 
 namespace ACAT.Extensions.Default.UI.Dialogs
 {
@@ -89,7 +54,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// <summary>
         /// Dialog common object
         /// </summary>
-        private readonly DialogCommon _dialogCommon;
+        private DialogCommon _dialogCommon;
 
         /// <summary>
         /// Have the settings changed?
@@ -110,15 +75,6 @@ namespace ACAT.Extensions.Default.UI.Dialogs
 
             _windowActiveWatchdog = new WindowActiveWatchdog(this);
 
-            _dialogCommon = new DialogCommon(this);
-
-            if (!_dialogCommon.Initialize())
-            {
-                Log.Debug("Initialization error");
-            }
-
-            initWidgetSettings();
-
             Load += ScreenLockSettingsForm_Load;
             FormClosing += ScreenLockSettingsForm_FormClosing;
         }
@@ -130,6 +86,11 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         {
             get { return DescriptorAttribute.GetDescriptor(GetType()); }
         }
+
+        /// <summary>
+        /// Gets the PanelCommon object
+        /// </summary>
+        public IPanelCommon PanelCommon { get { return _dialogCommon; } }
 
         /// <summary>
         /// Returns the synch object
@@ -148,6 +109,25 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         }
 
         /// <summary>
+        /// Intitializes the class
+        /// </summary>
+        /// <param name="startupArg">startup param</param>
+        /// <returns>true on success</returns>
+        public bool Initialize(StartupArg startupArg)
+        {
+            _dialogCommon = new DialogCommon(this);
+
+            if (!_dialogCommon.Initialize(startupArg))
+            {
+                return false;
+            }
+
+            initWidgetSettings();
+
+            return true;
+        }
+
+        /// <summary>
         /// Triggered when a widget is triggered
         /// </summary>
         /// <param name="widget">Which one triggered?</param>
@@ -159,11 +139,10 @@ namespace ACAT.Extensions.Default.UI.Dialogs
 
             if (String.IsNullOrEmpty(value))
             {
-                Log.Debug("received actuation from empty widget!");
                 return;
             }
 
-            Invoke(new MethodInvoker(delegate()
+            Invoke(new MethodInvoker(delegate
             {
                 switch (value)
                 {
@@ -173,10 +152,6 @@ namespace ACAT.Extensions.Default.UI.Dialogs
 
                     case "valButtonCancel":
                         onCancel();
-                        break;
-
-                    default:
-                        Log.Warn("unhandled widget actuation! value=" + value);
                         break;
                 }
             }));
@@ -228,42 +203,42 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// Validates the pin entered so far to make sure it is
         /// all digits, is within the length specified
         /// </summary>
-        /// <param name="strPIN">The Pin</param>
-        /// <param name="charMaxDigit">max length of the pin</param>
+        /// <param name="pin">The Pin</param>
+        /// <param name="maxDigit">max length of the pin</param>
         /// <param name="errorMessage">error message if not valid</param>
         /// <returns>true if it is a valid pin</returns>
-        private Boolean CheckPINCode(String strPIN, char charMaxDigit, ref String errorMessage)
+        private Boolean checkPINCode(String pin, char maxDigit, ref String errorMessage)
         {
             int testPin;
 
-            Log.Debug("strPIN=" + strPIN + "  strMaxDigit=" + charMaxDigit);
+            Log.Debug("strPIN=" + pin + "  strMaxDigit=" + maxDigit);
 
-            if (strPIN.Length == 0)
+            if (pin.Length == 0)
             {
-                errorMessage = "PIN cannot be empty";
+                errorMessage = R.GetString("PinCannotBeEmpty");
                 return false;
             }
 
-            if (!Int32.TryParse(strPIN, out testPin))
+            if (!Int32.TryParse(pin, out testPin))
             {
-                errorMessage = "PIN contains non-numeric characters";
+                errorMessage = R.GetString("PinContainsNonNumeric");
                 return false;
             }
 
             // wrong length
-            if ((strPIN.Length < MinPinLength) || (strPIN.Length > MaxPinLength))
+            if ((pin.Length < MinPinLength) || (pin.Length > MaxPinLength))
             {
-                errorMessage = "PIN length has to be between " + MinPinLength + " and " + MaxPinLength + " digits";
+                errorMessage = String.Format(R.GetString("PinHasToBeWithinLimits"), MinPinLength, MaxPinLength);
                 return false;
             }
 
             // pin is out of fange
-            for (byte i = 0; i < strPIN.Length; i++)
+            for (byte i = 0; i < pin.Length; i++)
             {
-                Log.Debug("strPIN[i]=" + (strPIN[i] - '0') + "  charMaxDigit=" + (charMaxDigit - '0'));
-                if ((strPIN[i] - '0') > (charMaxDigit - '0'))
+                Log.Debug("PIN[i]=" + (pin[i] - '0') + "  maxDigit=" + (maxDigit - '0'));
+                if ((pin[i] - '0') > (maxDigit - '0'))
                 {
-                    errorMessage = "PIN has digits outside of the valid range";
+                    errorMessage = R.GetString("PinOutsideRange");
                     return false;
                 }
             }
@@ -278,11 +253,11 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// </summary>
         private void initWidgetSettings()
         {
-            var rootWidget = _dialogCommon.GetRootWidget();
+            var rootWidget = PanelCommon.RootWidget;
 
-            (rootWidget.Finder.FindChild(tbMaxDigit.Name) as SliderWidget).SetState(Common.AppPreferences.MutePinDigitMax, SliderWidget.SliderUnitsOnes);
+            (rootWidget.Finder.FindChild(tbMaxDigit.Name) as SliderWidget).SetState(Common.AppPreferences.ScreenLockPinMaxDigitValue, SliderWidget.SliderUnitsOnes);
 
-            Windows.SetText(tbPINCode, Common.AppPreferences.MutePin);
+            Windows.SetText(tbPINCode, Common.AppPreferences.ScreenLockPin);
         }
 
         /// <summary>
@@ -294,7 +269,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
 
             if (_isDirty)
             {
-                if (!DialogUtils.Confirm(this, "Changes not saved.\nQuit anyway?"))
+                if (!DialogUtils.Confirm(this, R.GetString("ChangesNotSavedQuit")))
                 {
                     cancel = false;
                 }
@@ -314,15 +289,18 @@ namespace ACAT.Extensions.Default.UI.Dialogs
             var pin = Windows.GetText(tbPINCode).Trim();
 
             var errorMessage = String.Empty;
-            var hasValidPin = CheckPINCode(pin, Windows.GetText(svalMaxDigit)[0], ref errorMessage);
+            var hasValidPin = checkPINCode(pin, Windows.GetText(svalMaxDigit)[0], ref errorMessage);
 
             if (hasValidPin == false)
             {
-                DialogUtils.ShowTimedDialog(this, errorMessage);
+                showTimedDialog(errorMessage);
                 return;
             }
 
-            if (DialogUtils.Confirm(this, "Your new PIN is " + pin + "\nSave changes?"))
+            var str = R.GetString("NewPinSaveChanges").Replace("\\n", Environment.NewLine);
+            var prompt = String.Format(str, pin);
+
+            if (DialogUtils.Confirm(this, prompt))
             {
                 var prefs = updateSettingsFromUI();
                 if (prefs != null)
@@ -335,6 +313,14 @@ namespace ACAT.Extensions.Default.UI.Dialogs
             }
 
             Windows.CloseForm(this);
+        }
+
+        /// <summary>
+        /// Populate form controls text from Language resource
+        /// </summary>
+        private void populateFormText()
+        {
+            panelTitle.Text = R.GetString(panelTitle.Text);
         }
 
         /// <summary>
@@ -354,19 +340,32 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// </summary>
         private void ScreenLockSettingsForm_Load(object sender, EventArgs e)
         {
+            populateFormText();
+
             tbPINCode.TextChanged += tbPINCode_TextChanged;
-            tbPINCode.KeyPress += tbPINCode_KeyPress;
+            tbPINCode.KeyPress += textBoxPinCode_KeyPress;
 
             _dialogCommon.OnLoad();
 
-            Invoke(new MethodInvoker(delegate()
+            Invoke(new MethodInvoker(delegate
             {
                 _windowActiveWatchdog = new WindowActiveWatchdog(this);
             }));
 
             subscribeToEvents();
 
-            _dialogCommon.GetAnimationManager().Start(_dialogCommon.GetRootWidget());
+            PanelCommon.AnimationManager.Start(PanelCommon.RootWidget);
+        }
+
+        /// <summary>
+        /// Displays a timed dialog with the title and message
+        /// </summary>
+        /// <param name="message">message</param>
+        private void showTimedDialog(String message)
+        {
+            _windowActiveWatchdog.Pause();
+            DialogUtils.ShowTimedDialog(this, message);
+            _windowActiveWatchdog.Resume();
         }
 
         /// <summary>
@@ -376,7 +375,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         private void subscribeToEvents()
         {
             var widgetList = new List<Widget>();
-            _dialogCommon.GetRootWidget().Finder.FindAllButtons(widgetList);
+            PanelCommon.RootWidget.Finder.FindAllButtons(widgetList);
 
             foreach (var widget in widgetList)
             {
@@ -384,23 +383,10 @@ namespace ACAT.Extensions.Default.UI.Dialogs
             }
 
             widgetList.Clear();
-            _dialogCommon.GetRootWidget().Finder.FindAllChildren(typeof(SliderWidget), widgetList);
+            PanelCommon.RootWidget.Finder.FindAllChildren(typeof(SliderWidget), widgetList);
             foreach (var widget in widgetList)
             {
                 widget.EvtValueChanged += widget_EvtValueChanged;
-            }
-        }
-
-        /// <summary>
-        /// Key press event handler
-        /// </summary>
-        /// <param name="sender">event sender</param>
-        /// <param name="e">event args</param>
-        private void tbPINCode_KeyPress(object sender, KeyPressEventArgs e)
-        {
-            if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
-            {
-                e.Handled = true;
             }
         }
 
@@ -415,6 +401,19 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         }
 
         /// <summary>
+        /// Key press event handler
+        /// </summary>
+        /// <param name="sender">event sender</param>
+        /// <param name="e">event args</param>
+        private void textBoxPinCode_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
+            {
+                e.Handled = true;
+            }
+        }
+
+        /// <summary>
         /// Updates the preferences based on values from
         /// the form (the pincode in this case). Returns a
         /// new Preferences object
@@ -422,14 +421,14 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// <returns>ACATPreferences object</returns>
         private ACATPreferences updateSettingsFromUI()
         {
-            var strPinCode = Windows.GetText(tbPINCode);
+            var pin = Windows.GetText(tbPINCode);
             Int32 intPinCode;
 
-            Log.Debug("strPINCode=" + strPinCode);
+            Log.Debug("strPINCode=" + pin);
 
             ACATPreferences prefs = null;
 
-            if (Int32.TryParse(strPinCode, out intPinCode) == false)
+            if (Int32.TryParse(pin, out intPinCode) == false)
             {
                 // fail because it is not a number
                 Log.Debug("Invalid pincode provided!");
@@ -437,8 +436,8 @@ namespace ACAT.Extensions.Default.UI.Dialogs
             else
             {
                 prefs = ACATPreferences.Load();
-                prefs.MutePin = Common.AppPreferences.MutePin = strPinCode;
-                prefs.MutePinDigitMax = Common.AppPreferences.MutePinDigitMax = (byte)(_dialogCommon.GetRootWidget().Finder.FindChild(tbMaxDigit.Name) as SliderWidget).GetState(SliderWidget.SliderUnitsOnes);
+                prefs.ScreenLockPin = Common.AppPreferences.ScreenLockPin = pin;
+                prefs.ScreenLockPinMaxDigitValue = Common.AppPreferences.ScreenLockPinMaxDigitValue = (byte)(PanelCommon.RootWidget.Finder.FindChild(tbMaxDigit.Name) as SliderWidget).GetState(SliderWidget.SliderUnitsOnes);
             }
             return prefs;
         }

@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="Program.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,52 +18,14 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.IO;
-using System.Reflection;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.Audit;
 using ACAT.Lib.Core.PanelManagement;
-using ACAT.Lib.Core.UserManagement;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Extension;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using ACATExtension.CommandHandlers;
+using System;
+using System.Windows.Forms;
 
 namespace ACAT.Applications.ACATApp
 {
@@ -73,7 +35,7 @@ namespace ACAT.Applications.ACATApp
     internal static class Program
     {
         /// <summary>
-        /// Preferred panel config to sue
+        /// Preferred panel config to use
         /// </summary>
         private static String _panelConfig;
 
@@ -104,62 +66,53 @@ namespace ACAT.Applications.ACATApp
         [STAThread]
         public static void Main(String[] args)
         {
-            // Disallow multiple instances
-            if (FileUtils.IsACATRunning())
+            if (AppCommon.OtherInstancesRunning())
             {
                 return;
             }
-
-            Windows.TurnOffDPIAwareness();
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
-            var assembly = Assembly.GetExecutingAssembly();
-
-            // get appname and copyright information
-            object[] attributes = assembly.GetCustomAttributes(typeof(AssemblyTitleAttribute), false);
-            var appName = (attributes.Length != 0)
-                ? ((AssemblyTitleAttribute)attributes[0]).Title
-                : String.Empty;
-
-            var appVersion = "Version " + assembly.GetName().Version;
-            attributes = assembly.GetCustomAttributes(typeof(AssemblyCopyrightAttribute), false);
-            var appCopyright = (attributes.Length != 0)
-                ? ((AssemblyCopyrightAttribute)attributes[0]).Copyright
-                : String.Empty;
-
-            Log.Info("***** " + appName + ". " + appVersion + ". " + appCopyright + " *****");
+            FileUtils.LogAssemblyInfo();
 
             parseCommandLine(args);
 
-            CoreGlobals.AppGlobalPreferences =
-                GlobalPreferences.Load(FileUtils.GetPreferencesFileFullPath(GlobalPreferences.FileName));
+            AppCommon.LoadGlobalSettings();
 
-            //Set the active user/profile information
-            setUserName();
-            setProfileName();
+            AppCommon.SetUserName(_userName);
+            AppCommon.SetProfileName(_profile);
 
-            //Create user and profile if they don't already exist
-            if (!createUserAndProfile())
+            if (!AppCommon.CreateUserAndProfile())
             {
                 return;
             }
 
-            if (!loadUserPreferences())
+            if (!AppCommon.LoadUserPreferences())
             {
                 return;
             }
+
+            Common.AppPreferences.AppId = "ACATApp";
+            Common.AppPreferences.AppName = "ACAT App";
+
+            CommandDescriptors.Init();
 
             Log.SetupListeners();
 
-            if (!String.IsNullOrEmpty(_panelConfig))
+            if (!AppCommon.SetCulture())
             {
-                Common.AppPreferences.PreferredPanelConfigNames = _panelConfig + ";" +
-                                                                  Common.AppPreferences.PreferredPanelConfigNames;
+                return;
             }
 
-            Splash splash = new Splash(FileUtils.GetImagePath("SplashScreenImage.png"), appName, appVersion, appCopyright, 1000);
+            CommandDescriptors.Init();
+
+            if (!String.IsNullOrEmpty(_panelConfig))
+            {
+                Common.AppPreferences.PreferredPanelConfigNames = _panelConfig;
+            }
+
+            Splash splash = new Splash(2000);
             splash.Show();
 
             Context.PreInit();
@@ -177,20 +130,26 @@ namespace ACAT.Applications.ACATApp
                 }
             }
 
+            if (splash != null)
+            {
+                splash.Close();
+            }
+
             AuditLog.Audit(new AuditEvent("Application", "start"));
 
             Context.ShowTalkWindowOnStartup = Common.AppPreferences.ShowTalkWindowOnStartup;
             Context.AppAgentMgr.EnableContextualMenusForDialogs = Common.AppPreferences.EnableContextualMenusForDialogs;
             Context.AppAgentMgr.EnableContextualMenusForMenus = Common.AppPreferences.EnableContextualMenusForMenus;
 
-            if (splash != null)
+            if (Context.ShowTalkWindowOnStartup)
             {
-                splash.Close();
+                Context.AppTalkWindowManager.ToggleTalkWindow();
+                Context.ShowTalkWindowOnStartup = false;
             }
 
             if (!Context.PostInit())
             {
-                MessageBox.Show(Context.GetInitCompletionStatus(), "Initialization Error");
+                MessageBox.Show(Context.GetInitCompletionStatus(), R.GetString("InitializationError"));
                 return;
             }
 
@@ -200,13 +159,15 @@ namespace ACAT.Applications.ACATApp
             {
                 Application.Run();
 
+                AppCommon.ExitMessageShow();
+
                 AuditLog.Audit(new AuditEvent("Application", "stop"));
 
                 Context.Dispose();
 
                 Common.Uninit();
 
-                //Utils.Dispose();
+                AppCommon.ExitMessageClose();
 
                 Log.Close();
             }
@@ -214,129 +175,8 @@ namespace ACAT.Applications.ACATApp
             {
                 MessageBox.Show(ex.ToString());
             }
-        }
 
-        /// <summary>
-        /// Creates the specified user using the batchFileName.
-        /// Executes the batchfile which creates the user
-        /// folder and copies the initialization files
-        /// </summary>
-        /// <param name="batchFileName">Name of the batchfile to run</param>
-        /// <param name="userName">Name of the user</param>
-        /// <returns>true on success</returns>
-        private static bool createUser(String batchFileName, String userName)
-        {
-            bool retVal = true;
-            try
-            {
-                var dir = AppDomain.CurrentDomain.BaseDirectory;
-                var fileName = Path.Combine(dir, batchFileName);
-                Process proc = new Process
-                {
-                    StartInfo =
-                    {
-                        FileName = fileName,
-                        WorkingDirectory = dir,
-                        Arguments = userName,
-                        UseShellExecute = true
-                    }
-                };
-
-                proc.Start();
-                proc.WaitForExit();
-                int exitCode = proc.ExitCode;
-                proc.Close();
-
-                retVal = (exitCode == 0);
-                if (!retVal)
-                {
-                    MessageBox.Show("Could not create user.\nThe batch file " + fileName + " returned an error.\n\nPlease run this batch file manually to check the reason", "ACAT Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Unable to create user. Error executing batchfile " + batchFileName + ".\nError: " + ex.ToString());
-                retVal = false;
-            }
-            return retVal;
-        }
-
-        /// <summary>
-        /// Creates the user and profile directories if they
-        /// don't exist
-        /// </summary>
-        /// <returns></returns>
-        private static bool createUserAndProfile()
-        {
-            if (!UserManager.CurrentUserExists())
-            {
-                const string batchFile = "CreateUser.bat";
-
-                if (!createUser(batchFile, UserManager.CurrentUser))
-                {
-                    return false;
-                }
-            }
-
-            if (!ProfileManager.ProfileExists(ProfileManager.CurrentProfile))
-            {
-                ProfileManager.CreateProfile(ProfileManager.CurrentProfile);
-            }
-
-            if (!ProfileManager.ProfileExists(ProfileManager.CurrentProfile))
-            {
-                MessageBox.Show("Could not find profile " + ProfileManager.CurrentProfile);
-                return false;
-            }
-
-            return true;
-        }
-
-        /// <summary>
-        /// Checks if the specified string is an option flag.
-        /// it should start with a - or a /
-        /// </summary>
-        /// <param name="arg">arg to check</param>
-        /// <returns>true if it is</returns>
-        private static bool isOption(String arg)
-        {
-            if (!String.IsNullOrEmpty(arg))
-            {
-                return (arg[0] == '/' || arg[0] == '-');
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Loads user settings from the user's profile directory
-        /// </summary>
-        /// <returns>true on success</returns>
-        private static bool loadUserPreferences()
-        {
-            ACATPreferences.PreferencesFilePath = ProfileManager.GetFullPath("Settings.xml");
-            ACATPreferences.DefaultPreferencesFilePath = ProfileManager.GetFullPath("DefaultSettings.xml");
-
-            FileUtils.AppPreferencesDir = ProfileManager.CurrentProfileDir;
-
-            Common.AppPreferences = ACATPreferences.Load();
-            if (Common.AppPreferences == null)
-            {
-                MessageBox.Show("Unable to read preferences from " + FileUtils.AppPreferencesDir);
-                return false;
-            }
-
-            Common.AppPreferences.Save();
-
-            CoreGlobals.AppPreferences = Common.AppPreferences;
-
-            ACATPreferences.SaveDefaults<ACATPreferences>(ACATPreferences.DefaultPreferencesFilePath);
-
-            Common.AppPreferences.DebugAssertOnError = false;
-
-            ACATPreferences.ApplicationAssembly = Assembly.GetExecutingAssembly();
-
-            return true;
+            AppCommon.OnExit();
         }
 
         /// <summary>
@@ -372,7 +212,7 @@ namespace ACAT.Applications.ACATApp
                 {
                     case ParseState.Profile:
                         args[index] = args[index].Trim();
-                        if (!isOption(args[index]))
+                        if (!AppCommon.IsOption(args[index]))
                         {
                             _profile = args[index].Trim();
                         }
@@ -380,7 +220,7 @@ namespace ACAT.Applications.ACATApp
                         break;
 
                     case ParseState.Username:
-                        if (!isOption(args[index]))
+                        if (!AppCommon.IsOption(args[index]))
                         {
                             _userName = args[index].Trim();
                         }
@@ -388,52 +228,12 @@ namespace ACAT.Applications.ACATApp
                         break;
 
                     case ParseState.PanelConfig:
-                        if (!isOption(args[index]))
+                        if (!AppCommon.IsOption(args[index]))
                         {
                             _panelConfig = args[index].Trim();
                         }
                         break;
                 }
-            }
-        }
-
-        /// <summary>
-        /// Sets the active profile name
-        /// </summary>
-        private static void setProfileName()
-        {
-            // if the profile has not been specified in the
-            // command line, use the one from GlobalPreferences
-            if (string.IsNullOrEmpty(_profile))
-            {
-                ProfileManager.CurrentProfile = CoreGlobals.AppGlobalPreferences.CurrentProfile.Trim();
-                if (String.IsNullOrEmpty(ProfileManager.CurrentProfile))
-                {
-                    ProfileManager.CurrentProfile = ProfileManager.DefaultProfileName;
-                }
-            }
-            else
-            {
-                ProfileManager.CurrentProfile = _profile;
-            }
-        }
-
-        private static void setUserName()
-        {
-            // if username has not been specified in the
-            // command line, use the one from GlobalPreferences
-            if (string.IsNullOrEmpty(_userName))
-            {
-                //UserManager.CurrentUser = CoreGlobals.AppGlobalPreferences.CurrentUser.Trim();
-                UserManager.CurrentUser = "ACAT";  // hardcode for
-                if (String.IsNullOrEmpty(UserManager.CurrentUser))
-                {
-                    UserManager.CurrentUser = UserManager.DefaultUserName;
-                }
-            }
-            else
-            {
-                UserManager.CurrentUser = _userName;
             }
         }
     }

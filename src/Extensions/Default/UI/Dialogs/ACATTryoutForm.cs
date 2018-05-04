@@ -1,7 +1,7 @@
-﻿////////////////////////////////////////////////////////////////////////////
+﻿///////////////////////////////////////////////////////////////////////////
 // <copyright file="ACATryoutForm.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,61 +18,25 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.PanelManagement;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Core.WidgetManagement;
 using ACAT.Lib.Extension;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace ACAT.Extensions.Default.UI.Dialogs
 {
     /// <summary>
-    /// Lets the user get used to using the swtich trigger mechanism
-    /// and interact with the UI.
-    /// A simple dialog that lets the enter a few words.
-    /// Four letters are displayed, words are made up of these
-    /// letters.
-    /// The scanning speed can also be adjusted to suit the user's
+    /// Enables the user get used to using the swtich trigger mechanism
+    /// and interact with the UI.  A simple dialog that lets the enter a few words.
+    /// Four letters are displayed, words are made up of combinations of these
+    /// letters. The scanning speed can also be adjusted to suit the user's
     /// preference.
+    /// A nice way to get the user to get started on ACAT
     /// </summary>
     [DescriptorAttribute("CE2553C4-8055-4CAC-BAE0-4C1A0E8E8774",
                         "ACATTryoutForm",
@@ -85,14 +49,23 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         private const int StepSize = 50;
 
         /// <summary>
-        /// The DialogCommon object
-        /// </summary>
-        private readonly DialogCommon _dialogCommon;
-
-        /// <summary>
         /// List of words to try.
         /// </summary>
-        private readonly String[] words = { "tea", "eat", "ate", "tab", "bet", "bat", "beet" };
+        private readonly String[] words =
+        {
+            R.GetString("TryoutWord1"),
+            R.GetString("TryoutWord2"),
+            R.GetString("TryoutWord3"),
+            R.GetString("TryoutWord4"),
+            R.GetString("TryoutWord5"),
+            R.GetString("TryoutWord6"),
+            R.GetString("TryoutWord7"),
+        };
+
+        /// <summary>
+        /// The DialogCommon object
+        /// </summary>
+        private DialogCommon _dialogCommon;
 
         /// <summary>
         /// Which word are we trying now?
@@ -106,15 +79,15 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         {
             InitializeComponent();
 
+            label1.Text = R.GetString("TryoutTypeThis") + ":";
+            buttonSave.Text = R.GetString("Save");
+            buttonSteppingTimeIncrease.Text = R.GetString("Faster");
+            buttonSteppingTimeDecrease.Text = R.GetString("Slower");
+            toolStripLabel1.Text = R.GetString("ScanSpeed");
+
             updateToolbar();
 
             textBoxEntry.TextChanged += TextBoxEntryOnTextChanged;
-            _dialogCommon = new DialogCommon(this);
-
-            if (!_dialogCommon.Initialize())
-            {
-                return;
-            }
 
             setNextWord();
 
@@ -129,6 +102,11 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         {
             get { return DescriptorAttribute.GetDescriptor(GetType()); }
         }
+
+        /// <summary>
+        /// Gets the PanelCommon object
+        /// </summary>
+        public IPanelCommon PanelCommon { get { return _dialogCommon; } }
 
         /// <summary>
         /// Gets the sync object
@@ -147,6 +125,17 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         }
 
         /// <summary>
+        /// Intitializes the class
+        /// </summary>
+        /// <param name="startupArg">startup param</param>
+        /// <returns>true on success</returns>
+        public bool Initialize(StartupArg startupArg)
+        {
+            _dialogCommon = new DialogCommon(this);
+            return _dialogCommon.Initialize(startupArg);
+        }
+
+        /// <summary>
         /// Triggered when a widget is actuated.
         /// </summary>
         /// <param name="widget">Which one triggered?</param>
@@ -156,40 +145,40 @@ namespace ACAT.Extensions.Default.UI.Dialogs
 
             Log.Debug();
 
-            Invoke(new MethodInvoker(delegate()
+            Invoke(new MethodInvoker(delegate
             {
                 switch (widget.Name)
                 {
                     case "B1":
-                        textBoxEntry.Text = textBoxEntry.Text + widget.Value;
+                        setText(textBoxEntry.Text + widget.Value);
                         break;
 
                     case "B2":
-                        textBoxEntry.Text = textBoxEntry.Text + widget.Value;
+                        setText(textBoxEntry.Text + widget.Value);
                         break;
 
                     case "B3":
-                        textBoxEntry.Text = textBoxEntry.Text + widget.Value;
+                        setText(textBoxEntry.Text + widget.Value);
                         break;
 
                     case "B4":
-                        textBoxEntry.Text = textBoxEntry.Text + widget.Value;
+                        setText(textBoxEntry.Text + widget.Value);
                         break;
 
                     case "buttonBackspace": // delete last letter
                         if (textBoxEntry.Text.Length == 1)
                         {
-                            textBoxEntry.Text = string.Empty;
+                            setText(String.Empty);
                         }
                         else if (textBoxEntry.Text.Length > 1)
                         {
-                            textBoxEntry.Text = textBoxEntry.Text.Substring(0, textBoxEntry.Text.Length - 1);
+                            setText(textBoxEntry.Text.Substring(0, textBoxEntry.Text.Length - 1));
                         }
 
                         break;
 
                     case "buttonReset":
-                        clearTextBox();
+                        setText(String.Empty);
                         break;
 
                     case "buttonExit":
@@ -199,13 +188,29 @@ namespace ACAT.Extensions.Default.UI.Dialogs
 
                 if (quit)
                 {
-                    if (DialogUtils.Confirm("Exit?"))
+                    if (DialogUtils.Confirm(R.GetString("ExitQuestion")))
                     {
                         Context.AppQuit = true;
                         Windows.CloseForm(this);
                     }
+                    else
+                    {
+                        textBoxEntry.Focus();
+                    }
                 }
             }));
+        }
+
+        /// <summary>
+        /// Sets the text in the textbox and sets caret position
+        /// </summary>
+        /// <param name="text">text to set</param>
+        private void setText(String text)
+        {
+            textBoxEntry.Text = text;
+            textBoxEntry.SelectionStart = textBoxEntry.Text.Length;
+            textBoxEntry.ScrollToCaret();
+            textBoxEntry.Focus();
         }
 
         /// <summary>
@@ -271,7 +276,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         private void ACATTryoutForm_Load(object sender, EventArgs e)
         {
             _dialogCommon.OnLoad();
-            _dialogCommon.GetAnimationManager().Start(_dialogCommon.GetRootWidget());
+            PanelCommon.AnimationManager.Start(PanelCommon.RootWidget);
         }
 
         /// <summary>
@@ -283,7 +288,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         {
             var prefs = ACATPreferences.Load();
 
-            prefs.SteppingTime = Common.AppPreferences.SteppingTime;
+            prefs.ScanTime = Common.AppPreferences.ScanTime;
 
             prefs.Save();
         }
@@ -295,9 +300,9 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// <param name="e">event args</param>
         private void buttonSteppingTimeDecrease_Click(object sender, EventArgs e)
         {
-            _dialogCommon.GetAnimationManager().Interrupt();
+            PanelCommon.AnimationManager.Interrupt();
 
-            Common.AppPreferences.SteppingTime += StepSize;
+            Common.AppPreferences.ScanTime += StepSize;
 
             Common.AppPreferences.NotifyPreferencesChanged();
 
@@ -311,9 +316,9 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// <param name="e">event args</param>
         private void buttonSteppingTimeIncrease_Click(object sender, EventArgs e)
         {
-            _dialogCommon.GetAnimationManager().Interrupt();
+            PanelCommon.AnimationManager.Interrupt();
 
-            Common.AppPreferences.SteppingTime = Math.Max(50, Common.AppPreferences.SteppingTime - StepSize);
+            Common.AppPreferences.ScanTime = Math.Max(50, Common.AppPreferences.ScanTime - StepSize);
 
             Common.AppPreferences.NotifyPreferencesChanged();
 
@@ -325,7 +330,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// </summary>
         private void clearTextBox()
         {
-            textBoxEntry.Text = String.Empty;
+            
         }
 
         /// <summary>
@@ -337,7 +342,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
             {
                 Thread.Sleep(1000);
 
-                _dialogCommon.GetAnimationManager().Resume();
+                PanelCommon.AnimationManager.Resume();
             });
         }
 
@@ -363,13 +368,13 @@ namespace ACAT.Extensions.Default.UI.Dialogs
             var str = textBoxEntry.Text.Trim();
             if (string.Compare(str, labelTryWord.Text, true) == 0)
             {
-                _dialogCommon.GetAnimationManager().Pause();
+                PanelCommon.AnimationManager.Pause();
 
                 Opacity = 0.75f;
-                DialogUtils.Toast("Good.", 500);
+                DialogUtils.Toast(R.GetString("Good"), 500);
                 Opacity = 1.0f;
 
-                clearTextBox();
+                setText(String.Empty);
 
                 setNextWord();
 
@@ -382,7 +387,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// </summary>
         private void updateToolbar()
         {
-            labelSteppingTimeValue.Text = "(" + Common.AppPreferences.SteppingTime.ToString() + " msecs)";
+            labelSteppingTimeValue.Text = "(" + Common.AppPreferences.ScanTime + " " + R.GetString("Msecs") + ")";
         }
     }
 }

@@ -30,12 +30,12 @@
         {
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
             this.Row1 = new System.Windows.Forms.TableLayoutPanel();
-            this.PromptRow = new System.Windows.Forms.TableLayoutPanel();
-            this.Prompt = new ACAT.Lib.Core.WidgetManagement.ScannerButtonControl();
             this.ItemText1 = new ACAT.Lib.Core.WidgetManagement.ScannerButtonControl();
             this.ItemText2 = new ACAT.Lib.Core.WidgetManagement.ScannerButtonControl();
             this.ItemText3 = new ACAT.Lib.Core.WidgetManagement.ScannerButtonControl();
             this.ItemText4 = new ACAT.Lib.Core.WidgetManagement.ScannerButtonControl();
+            this.PromptRow = new System.Windows.Forms.TableLayoutPanel();
+            this.Prompt = new ACAT.Lib.Core.WidgetManagement.ScannerButtonControl();
             this.tableLayoutPanel1.SuspendLayout();
             this.Row1.SuspendLayout();
             this.PromptRow.SuspendLayout();
@@ -79,6 +79,66 @@
             this.Row1.Size = new System.Drawing.Size(400, 57);
             this.Row1.TabIndex = 3;
             // 
+            // ItemText1
+            // 
+            this.ItemText1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
+            this.ItemText1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.ItemText1.FlatAppearance.BorderColor = System.Drawing.Color.Gray;
+            this.ItemText1.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.ItemText1.Location = new System.Drawing.Point(4, 4);
+            this.ItemText1.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.ItemText1.Name = "ItemText1";
+            this.ItemText1.Size = new System.Drawing.Size(92, 49);
+            this.ItemText1.TabIndex = 0;
+            this.ItemText1.Text = ".";
+            this.ItemText1.UseMnemonic = false;
+            this.ItemText1.UseVisualStyleBackColor = true;
+            // 
+            // ItemText2
+            // 
+            this.ItemText2.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
+            this.ItemText2.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.ItemText2.FlatAppearance.BorderColor = System.Drawing.Color.Gray;
+            this.ItemText2.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.ItemText2.Location = new System.Drawing.Point(104, 4);
+            this.ItemText2.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.ItemText2.Name = "ItemText2";
+            this.ItemText2.Size = new System.Drawing.Size(92, 49);
+            this.ItemText2.TabIndex = 1;
+            this.ItemText2.Text = ".";
+            this.ItemText2.UseMnemonic = false;
+            this.ItemText2.UseVisualStyleBackColor = true;
+            // 
+            // ItemText3
+            // 
+            this.ItemText3.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
+            this.ItemText3.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.ItemText3.FlatAppearance.BorderColor = System.Drawing.Color.Gray;
+            this.ItemText3.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.ItemText3.Location = new System.Drawing.Point(204, 4);
+            this.ItemText3.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.ItemText3.Name = "ItemText3";
+            this.ItemText3.Size = new System.Drawing.Size(92, 49);
+            this.ItemText3.TabIndex = 2;
+            this.ItemText3.Text = ".";
+            this.ItemText3.UseMnemonic = false;
+            this.ItemText3.UseVisualStyleBackColor = true;
+            // 
+            // ItemText4
+            // 
+            this.ItemText4.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
+            this.ItemText4.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.ItemText4.FlatAppearance.BorderColor = System.Drawing.Color.Gray;
+            this.ItemText4.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.ItemText4.Location = new System.Drawing.Point(304, 4);
+            this.ItemText4.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.ItemText4.Name = "ItemText4";
+            this.ItemText4.Size = new System.Drawing.Size(92, 49);
+            this.ItemText4.TabIndex = 3;
+            this.ItemText4.Text = ".";
+            this.ItemText4.UseMnemonic = false;
+            this.ItemText4.UseVisualStyleBackColor = true;
+            // 
             // PromptRow
             // 
             this.PromptRow.ColumnCount = 1;
@@ -111,62 +171,6 @@
             this.Prompt.TabIndex = 1;
             this.Prompt.UseMnemonic = false;
             this.Prompt.UseVisualStyleBackColor = true;
-            // 
-            // ItemText1
-            // 
-            this.ItemText1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.ItemText1.FlatAppearance.BorderColor = System.Drawing.Color.Gray;
-            this.ItemText1.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.ItemText1.Location = new System.Drawing.Point(4, 4);
-            this.ItemText1.Margin = new System.Windows.Forms.Padding(4);
-            this.ItemText1.Name = "ItemText1";
-            this.ItemText1.Size = new System.Drawing.Size(92, 49);
-            this.ItemText1.TabIndex = 0;
-            this.ItemText1.Text = ".";
-            this.ItemText1.UseMnemonic = false;
-            this.ItemText1.UseVisualStyleBackColor = true;
-            // 
-            // ItemText2
-            // 
-            this.ItemText2.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.ItemText2.FlatAppearance.BorderColor = System.Drawing.Color.Gray;
-            this.ItemText2.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.ItemText2.Location = new System.Drawing.Point(104, 4);
-            this.ItemText2.Margin = new System.Windows.Forms.Padding(4);
-            this.ItemText2.Name = "ItemText2";
-            this.ItemText2.Size = new System.Drawing.Size(92, 49);
-            this.ItemText2.TabIndex = 1;
-            this.ItemText2.Text = ".";
-            this.ItemText2.UseMnemonic = false;
-            this.ItemText2.UseVisualStyleBackColor = true;
-            // 
-            // ItemText3
-            // 
-            this.ItemText3.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.ItemText3.FlatAppearance.BorderColor = System.Drawing.Color.Gray;
-            this.ItemText3.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.ItemText3.Location = new System.Drawing.Point(204, 4);
-            this.ItemText3.Margin = new System.Windows.Forms.Padding(4);
-            this.ItemText3.Name = "ItemText3";
-            this.ItemText3.Size = new System.Drawing.Size(92, 49);
-            this.ItemText3.TabIndex = 2;
-            this.ItemText3.Text = ".";
-            this.ItemText3.UseMnemonic = false;
-            this.ItemText3.UseVisualStyleBackColor = true;
-            // 
-            // ItemText4
-            // 
-            this.ItemText4.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.ItemText4.FlatAppearance.BorderColor = System.Drawing.Color.Gray;
-            this.ItemText4.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.ItemText4.Location = new System.Drawing.Point(304, 4);
-            this.ItemText4.Margin = new System.Windows.Forms.Padding(4);
-            this.ItemText4.Name = "ItemText4";
-            this.ItemText4.Size = new System.Drawing.Size(92, 49);
-            this.ItemText4.TabIndex = 3;
-            this.ItemText4.Text = ".";
-            this.ItemText4.UseMnemonic = false;
-            this.ItemText4.UseVisualStyleBackColor = true;
             // 
             // YesNoScanner
             // 

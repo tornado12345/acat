@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="ActuatorBase.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,47 +18,11 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
+using ACAT.Lib.Core.Extensions;
+using ACAT.Lib.Core.PreferencesManagement;
+using ACAT.Lib.Core.Utility;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Windows.Forms;
-using System.Xml;
-using ACAT.Lib.Core.Utility;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
 
 namespace ACAT.Lib.Core.ActuatorManagement
 {
@@ -72,6 +36,11 @@ namespace ACAT.Lib.Core.ActuatorManagement
     /// </summary>
     public abstract class ActuatorBase : IActuator
     {
+        /// <summary>
+        /// Used to invoke methods/properties in the actuator
+        /// </summary>
+        private readonly ExtensionInvoker _invoker;
+
         /// <summary>
         /// A list of switches defined for this actuator.  Each switch has a
         /// name that is unique to the actuator
@@ -91,6 +60,7 @@ namespace ACAT.Lib.Core.ActuatorManagement
             Enabled = false;
             _switches = new Dictionary<String, IActuatorSwitch>();
             actuatorState = State.Stopped;
+            _invoker = new ExtensionInvoker(this);
         }
 
         /// <summary>
@@ -125,12 +95,15 @@ namespace ACAT.Lib.Core.ActuatorManagement
         /// <summary>
         /// Gets or sets the name of the actuator
         /// </summary>
-        public String Name { get; set; }
+        public String Name
+        {
+            get { return Descriptor.Name; }
+        }
 
         /// <summary>
-        /// Does this actuator support a settings dialog?
+        /// Gets whether this supports a custom settings dialog
         /// </summary>
-        public bool SupportsSettingsDialog
+        public virtual bool SupportsPreferencesDialog
         {
             get { return false; }
         }
@@ -157,6 +130,17 @@ namespace ACAT.Lib.Core.ActuatorManagement
         public abstract IActuatorSwitch CreateSwitch();
 
         /// <summary>
+        /// Creates a switch object using the specified switch object
+        /// as the source.  Override this to create your specific switch object
+        /// </summary>
+        /// <param name="sourceSwitch">source switch object</param>
+        /// <returns>created object</returns>
+        public virtual IActuatorSwitch CreateSwitch(IActuatorSwitch sourceSwitch)
+        {
+            return new ActuatorSwitchBase(sourceSwitch);
+        }
+
+        /// <summary>
         /// Disposes resources
         /// </summary>
         public void Dispose()
@@ -169,10 +153,29 @@ namespace ACAT.Lib.Core.ActuatorManagement
         }
 
         /// <summary>
-        /// Returns the form that is the settings dialog for the actuator
+        /// Override this to returns the default preferences for the actuator
         /// </summary>
-        /// <returns>the form</returns>
-        public Form GetSettingsDialog()
+        /// <returns>default preferences</returns>
+        public virtual IPreferences GetDefaultPreferences()
+        {
+            return null;
+        }
+
+        /// <summary>
+        /// Returns invoker used to access methods and properties through
+        /// reflection
+        /// </summary>
+        /// <returns></returns>
+        public virtual ExtensionInvoker GetInvoker()
+        {
+            return _invoker;
+        }
+
+        /// <summary>
+        /// Returns the preferences object for the actuator
+        /// </summary>
+        /// <returns>preferences object</returns>
+        public virtual IPreferences GetPreferences()
         {
             return null;
         }
@@ -187,34 +190,26 @@ namespace ACAT.Lib.Core.ActuatorManagement
         }
 
         /// <summary>
-        /// Parses the XML node that contains all the info for this actuator
+        /// Loads switch settings from the specified settings 
+        /// object. Creates the switches with attributes from the
+        /// switchSettings and adds the switches to the _switches
+        /// dictionary
         /// </summary>
-        /// <param name="actuatorNode">The xml fragment for the actuator</param>
+        /// <param name="switchSettings">Settings for switches</param>
         /// <returns>true on success, false otherwise</returns>
-        public bool Load(XmlNode actuatorNode)
+        public bool Load(IEnumerable<SwitchSetting> switchSettings)
         {
             // enumerate the switches in this actuator and create
             // each switch object using the switch ClassFactory
-            var switches = actuatorNode.SelectNodes("Switch");
-            if (switches == null)
-            {
-                return false;
-            }
 
             Log.Debug("Loading switches");
-            foreach (XmlNode node in switches)
+            foreach (var switchSetting in switchSettings)
             {
-                var name = XmlUtils.GetXMLAttrString(node, "name");
-                if (String.IsNullOrEmpty(name))
-                {
-                    continue;
-                }
-
                 var actuatorSwitch = CreateSwitch();
-                Log.Debug("name=" + name);
-                if (!_switches.ContainsKey(name))
+                Log.Debug("name=" + switchSetting.Name);
+                if (!_switches.ContainsKey(switchSetting.Name))
                 {
-                    if (actuatorSwitch.Load(node) && actuatorSwitch.Init())
+                    if (actuatorSwitch.Load(switchSetting) && actuatorSwitch.Init())
                     {
                         Log.Debug("Adding switch " + actuatorSwitch.Name);
                         actuatorSwitch.Actuator = this;
@@ -228,6 +223,14 @@ namespace ACAT.Lib.Core.ActuatorManagement
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Invoked when the user presses the button on the
+        /// calibration dialog
+        /// </summary>
+        public virtual void OnCalibrationAction()
+        {
         }
 
         /// <summary>
@@ -247,6 +250,21 @@ namespace ACAT.Lib.Core.ActuatorManagement
         }
 
         /// <summary>
+        /// Invoked when the application quits
+        /// </summary>
+        public virtual void OnQuitApplication()
+        {
+        }
+
+        /// <summary>
+        /// This function is invoked to enable the actuator to 
+        /// register its switches
+        /// </summary>
+        public virtual void OnRegisterSwitches()
+        {
+        }
+
+        /// <summary>
         /// Pauses actuator.  No events will be received from the actuator
         /// when paused
         /// </summary>
@@ -255,10 +273,36 @@ namespace ACAT.Lib.Core.ActuatorManagement
         }
 
         /// <summary>
+        /// Removes the switch from the list of switches for this
+        /// actuator
+        /// </summary>
+        /// <param name="switchName">name of switch to remove</param>
+        /// <returns>true on success</returns>
+        public bool RemoveSwitch(String switchName)
+        {
+            bool retVal = _switches.ContainsKey(switchName);
+            if (retVal)
+            {
+                _switches.Remove(switchName);
+            }
+
+            return retVal;
+        }
+
+        /// <summary>
         /// Resumes actuator.  Will start sending events
         /// </summary>
         public virtual void Resume()
         {
+        }
+
+        /// <summary>
+        /// Shows the preferences dialog
+        /// </summary>
+        /// <returns>true on success</returns>
+        public virtual bool ShowPreferencesDialog()
+        {
+            return true;
         }
 
         /// <summary>
@@ -291,6 +335,52 @@ namespace ACAT.Lib.Core.ActuatorManagement
         }
 
         /// <summary>
+        /// Parses the "action" string and returns the corresponding
+        /// enum for SwitchAction
+        /// </summary>
+        /// <param name="action">string to parse</param>
+        /// <returns>enum value</returns>
+        protected SwitchAction getSwitchAction(String action)
+        {
+            var retVal = SwitchAction.Unknown;
+            try
+            {
+                retVal = (SwitchAction)Enum.Parse(typeof(SwitchAction), action, true);
+            }
+            catch (Exception e)
+            {
+                Log.Warn("VisionAcutator switch, invalid action specified " + action);
+                Log.Exception(e);
+            }
+
+            return retVal;
+        }
+
+        /// <summary>
+        /// Looks up the list of switches for a matching gesture and returns
+        /// a clone of the matching switch object
+        /// </summary>
+        /// <param name="gesture">The gesture string</param>
+        /// <param name="switches">Collection of switches for the actuator</param>
+        /// <returns></returns>
+        protected IActuatorSwitch getSwitchForGesture(
+                                            String gesture,
+                                            IEnumerable<IActuatorSwitch> switches)
+        {
+            foreach (var switchObj in switches)
+            {
+                var imageSwitch = switchObj;
+                if (String.Compare(imageSwitch.Source, gesture, true) == 0)
+                {
+                    Log.Debug("Found switch object " + switchObj.Name + " for gesture" + gesture);
+                    return CreateSwitch(switchObj);
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// The actuator should invoke this function to indicate end of calibration
         /// </summary>
         protected void OnEndCalibration()
@@ -314,7 +404,11 @@ namespace ACAT.Lib.Core.ActuatorManagement
         protected virtual void OnSwitchActivated(IActuatorSwitch switchObj)
         {
             switchObj.Action = SwitchAction.Down;
-            EvtSwitchActivated(this, new ActuatorSwitchEventArgs(switchObj));
+
+            if (EvtSwitchActivated != null)
+            {
+                EvtSwitchActivated(this, new ActuatorSwitchEventArgs(switchObj));
+            }
         }
 
         /// <summary>
@@ -325,7 +419,11 @@ namespace ACAT.Lib.Core.ActuatorManagement
         protected virtual void OnSwitchDeactivated(IActuatorSwitch switchObj)
         {
             switchObj.Action = SwitchAction.Up;
-            EvtSwitchDeactivated(this, new ActuatorSwitchEventArgs(switchObj));
+
+            if (EvtSwitchDeactivated != null)
+            {
+                EvtSwitchDeactivated(this, new ActuatorSwitchEventArgs(switchObj));
+            }
         }
 
         /// <summary>
@@ -336,7 +434,96 @@ namespace ACAT.Lib.Core.ActuatorManagement
         protected virtual void OnSwitchTriggered(IActuatorSwitch switchObj)
         {
             switchObj.Action = SwitchAction.Trigger;
-            EvtSwitchTriggered(this, new ActuatorSwitchEventArgs(switchObj));
+
+            if (EvtSwitchActivated != null)
+            {
+                EvtSwitchTriggered(this, new ActuatorSwitchEventArgs(switchObj));
+            }
+        }
+
+        /// <summary>
+        /// Helper function to parse actuator trigger message that can be sent
+        /// by some input sensors.  The message is in the form of a string.
+        /// After parsing the string, creates an Actuator switch object that
+        /// correponds to the gesture info in the string
+        /// Format of the string is:
+        ///    gesture=gesturetype;action=gestureevent;conf=confidence;time=timestamp;actuate=flag;tag=userdata
+        /// where
+        ///  gesturetype    is a string representing the gesture. This is used as
+        ///                 the 'source' field in the actuator switch object
+        ///  gestureevent   should be a valid value from the SwitchAction enum
+        ///  confidence     Integer representing the confidence level, for future use
+        ///  timestamp      Timestamp of when the switch event triggered (in ticks)
+        ///  flag           true/false.  If false, the switch trigger event will be ignored
+        ///  userdata       Any user data
+        /// Eg
+        ///    gesture=G1;action=trigger;conf=75;time=3244394443
+        /// </summary>
+        /// <param name="strData">input string to parse</param>
+        /// <param name="parsedGesture">gesture contained in the string</param>
+        /// <returns>switch object for the gesture, null if not found</returns>
+        protected IActuatorSwitch parseActuatorMsgAndGetSwitch(String strData, ref String parsedGesture)
+        {
+            IActuatorSwitch actuatorSwitch = null;
+            String gesture = String.Empty;
+            var switchAction = SwitchAction.Unknown;
+            String tag = String.Empty;
+            int confidence = -1;
+            long time = -1;
+            bool actuate = true;
+            parsedGesture = String.Empty;
+
+            var tokens = strData.Split(';');
+            foreach (var token in tokens)
+            {
+                String[] nameValue = token.Split('=');
+                if (nameValue.Length == 2)
+                {
+                    switch (nameValue[0])
+                    {
+                        case "gesture":  // G1, G2, ...
+                            gesture = nameValue[1];
+                            parsedGesture = gesture;
+                            break;
+
+                        case "action": // Up, Down, Trigger
+                            switchAction = getSwitchAction(nameValue[1]);
+                            break;
+
+                        case "time":  // in Ticks
+                            time = parseLong(nameValue[1]);
+                            break;
+
+                        case "confidence":  // integer 0 to 100
+                            confidence = (int)parseLong(nameValue[1]);
+                            break;
+
+                        case "actuate":
+                            actuate = String.Compare(nameValue[1], "true", true) == 0;
+                            break;
+
+                        case "tag":
+                            tag = nameValue[1];
+                            break;
+                    }
+                }
+            }
+
+            if (!String.IsNullOrEmpty(gesture) && switchAction != SwitchAction.Unknown)
+            {
+                actuatorSwitch = getSwitchForGesture(gesture, Switches);
+                if (actuatorSwitch != null)
+                {
+                    actuatorSwitch.Source = gesture;
+                    actuatorSwitch.Action = switchAction;
+                    actuatorSwitch.Confidence = confidence;
+                    actuatorSwitch.Timestamp = time;
+                    actuatorSwitch.Actuate = actuate;
+                    actuatorSwitch.Tag = tag;
+                }
+            }
+
+            return actuatorSwitch;
         }
 
         /// <summary>
@@ -357,9 +544,30 @@ namespace ACAT.Lib.Core.ActuatorManagement
         /// <param name="prompt">any message to display</param>
         /// <param name="timeout">calibration timeout</param>
         /// <param name="enableConfigure">should the configure button b e enabled</param>
-        protected void UpdateCalibrationStatus(String caption, String prompt, int timeout = 0, bool enableConfigure = true)
+        protected void UpdateCalibrationStatus(String caption, String prompt, int timeout = 0, bool enableConfigure = true, string buttonText = "")
         {
-            ActuatorManager.Instance.UpdateCalibrationStatus(this, caption, prompt, timeout, enableConfigure);
+            Log.Debug("Calling ActuatorManager.Instance.UpdateCalibrationStatus");
+            ActuatorManager.Instance.UpdateCalibrationStatus(this, caption, prompt, timeout, enableConfigure, buttonText);
+        }
+
+        /// <summary>
+        /// Parses a long (as string) and returns value
+        /// </summary>
+        /// <param name="val">string representation</param>
+        /// <returns>long value</returns>
+        private long parseLong(String val)
+        {
+            long retVal = -1;
+            try
+            {
+                retVal = Convert.ToInt32(val);
+            }
+            catch (Exception e)
+            {
+                Log.Exception(e);
+            }
+
+            return retVal;
         }
     }
 }

@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="SwitchWindowsAgent.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,50 +18,15 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Windows.Automation;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.AgentManagement;
 using ACAT.Lib.Core.AgentManagement.TextInterface;
 using ACAT.Lib.Core.PanelManagement;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Extension;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Windows.Automation;
+using System.Windows.Forms;
 
 namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
 {
@@ -72,8 +37,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
     /// selects a window and the agent activates the window and exits.
     /// </summary>
     [DescriptorAttribute("16478B95-A328-4575-A3F1-D8289781CC20",
-                        "Switch Windows Agent",
-                        "Alt-Tab equivalent.  Allows the user to switch between active windows")]
+                        "Windows Task Switcher",
+                        "SwitchWindowsAgent",
+                        "Alt-Tab equivalent.  Switch between active windows")]
     internal class SwitchWindowsAgent : FunctionalAgentBase
     {
         /// <summary>
@@ -82,7 +48,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
         private static SwitchWindowsScanner _switchWindowsScanner;
 
         /// <summary>
-        /// Meta data for window welected
+        /// Meta data for window selected
         /// </summary>
         private EnumWindows.WindowInfo _windowInfo;
 
@@ -108,6 +74,8 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
         {
             _windowInfo = null;
             ExitCode = CompletionCode.ContextSwitch;
+            IsClosing = false;
+
             _switchWindowsScanner = Context.AppPanelManager.CreatePanel("SwitchWindowsScanner") as SwitchWindowsScanner;
 
             if (_switchWindowsScanner != null)
@@ -115,6 +83,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
                 subscribeToEvents();
 
                 _switchWindowsScanner.FilterByProcessName = FilterByProcessName;
+
+                IsActive = true;
+
                 Context.AppPanelManager.ShowDialog(_switchWindowsScanner);
             }
 
@@ -126,21 +97,21 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
         /// to determine the 'enabled' state.
         /// </summary>
         /// <param name="arg">info about the scanner button</param>
-        public override void CheckWidgetEnabled(CheckEnabledArgs arg)
+        public override void CheckCommandEnabled(CommandEnabledArg arg)
         {
             arg.Handled = true;
 
-            switch (arg.Widget.SubClass)
+            switch (arg.Command)
             {
-                case "PunctuationScanner":
-                case "NumberScanner":
+                case "CmdPunctuationScanner":
+                case "CmdNumberScanner":
                     arg.Enabled = true;
                     break;
 
                 default:
                     if (_switchWindowsScanner != null)
                     {
-                        _switchWindowsScanner.CheckWidgetEnabled(arg);
+                        _switchWindowsScanner.CheckCommandEnabled(arg);
                     }
                     if (!arg.Handled)
                     {
@@ -159,6 +130,12 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
         /// <param name="handled">was this handled</param>
         public override void OnFocusChanged(WindowActivityMonitorInfo monitorInfo, ref bool handled)
         {
+            if (IsClosing)
+            {
+                Log.Debug("IsClosing is true.  Will not handle the focus change");
+                return;
+            }
+
             Log.Debug("OnFocus: " + monitorInfo);
 
             base.OnFocusChanged(monitorInfo, ref handled);
@@ -210,7 +187,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
         /// </summary>
         private void _form_EvtDone()
         {
-            if (confirm("Close?"))
+            if (confirm(R.GetString("CloseQ")))
             {
                 quit();
             }
@@ -240,7 +217,20 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
         private void _switchWindowsScanner_EvtActivateWindow(object sender, EnumWindows.WindowInfo windowInfo)
         {
             _windowInfo = windowInfo;
-            Windows.ActivateWindow(_windowInfo.Handle);
+
+            IsClosing = true;
+            IsActive = false;
+
+            if (Windows.IsDesktopWindow(_windowInfo.Handle))
+            {
+                Context.AppAgentMgr.Keyboard.Send(Keys.LWin, Keys.D);
+            }
+            else
+            {
+                Windows.ActivateWindow(_windowInfo.Handle);
+                EnumWindows.RestoreFocusToTopWindowOnDesktop();
+            }
+
             closeScanner();
             Close();
         }
@@ -272,6 +262,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.SwitchWindowsAgent
         /// </summary>
         private void quit()
         {
+            IsClosing = true;
+            IsActive = false;
+
             ExitCode = CompletionCode.None;
             closeScanner();
             Close();

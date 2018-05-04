@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="TimedMessageBox.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,44 +18,9 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
+using ACAT.ACATResources;
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Windows.Forms;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
 
 namespace ACAT.Lib.Core.PanelManagement
 {
@@ -73,11 +38,6 @@ namespace ACAT.Lib.Core.PanelManagement
         private const int _timeout = 6;
 
         /// <summary>
-        /// Closing message
-        /// </summary>
-        private const String _timerMsg = "This message box will close in {0} seconds";
-
-        /// <summary>
         /// Message to display
         /// </summary>
         private readonly String _message;
@@ -86,6 +46,11 @@ namespace ACAT.Lib.Core.PanelManagement
         /// Used to keep update the info on the form
         /// </summary>
         private readonly Timer _timer;
+
+        /// <summary>
+        /// Closing message
+        /// </summary>
+        private readonly String _timerMsg = R.GetString("ThisMessageBoxWillClose");
 
         /// <summary>
         /// Time remaining
@@ -158,6 +123,8 @@ namespace ACAT.Lib.Core.PanelManagement
         /// <param name="e">event args</param>
         private void TimedMessageBox_Load(object sender, EventArgs e)
         {
+            TopMost = false;
+            TopMost = true;
             _timeleft = _timeout;
             labelMessage.Text = _message;
             _timer.Interval = 1000;
@@ -183,6 +150,7 @@ namespace ACAT.Lib.Core.PanelManagement
         {
             labelTimer.Text = String.Format(_timerMsg, _timeleft);
             _timeleft -= 1;
+
             if (_timeleft < 0)
             {
                 _timer.Stop();

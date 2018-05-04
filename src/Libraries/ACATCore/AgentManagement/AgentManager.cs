@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="AgentManager.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,57 +18,23 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
+using ACAT.Lib.Core.ActuatorManagement;
+using ACAT.Lib.Core.AgentManagement.TextInterface;
+using ACAT.Lib.Core.InputActuators;
+using ACAT.Lib.Core.PanelManagement;
+using ACAT.Lib.Core.PanelManagement.CommandDispatcher;
+using ACAT.Lib.Core.PreferencesManagement;
+using ACAT.Lib.Core.Utility;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Permissions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Automation;
 using System.Windows.Forms;
-using ACAT.Lib.Core.ActuatorManagement;
-using ACAT.Lib.Core.AgentManagement.TextInterface;
-using ACAT.Lib.Core.InputActuators;
-using ACAT.Lib.Core.PanelManagement;
-using ACAT.Lib.Core.PanelManagement.CommandDispatcher;
-using ACAT.Lib.Core.Utility;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
 
 namespace ACAT.Lib.Core.AgentManagement
 {
@@ -258,7 +224,7 @@ namespace ACAT.Lib.Core.AgentManagement
         private KeyboardActuator _keyboardActuator;
 
         /// <summary>
-        /// Menu agent object
+        /// AppMenu agent object
         /// </summary>
         private IApplicationAgent _menuControlAgent;
 
@@ -298,9 +264,21 @@ namespace ACAT.Lib.Core.AgentManagement
         public event FocusChanged EvtFocusChanged;
 
         /// <summary>
+        /// Triggered when the mouse is clicked on a non-Scanner area
+        /// of the screen
+        /// </summary>
+        public event MouseEventHandler EvtNonScannerMouseDown;
+
+        /// <summary>
         /// Raised to request for a scanner to be displayed
         /// </summary>
         public event PanelRequest EvtPanelRequest;
+
+        /// <summary>
+        /// Triggered before functional agent is activated
+        /// </summary>
+        ///
+        public event EventHandler EvtPreActivateAgent;
 
         /// <summary>
         /// Rasied when the user clicks anywhere on the scanner
@@ -423,6 +401,11 @@ namespace ACAT.Lib.Core.AgentManagement
         /// <returns>the task to wait on</returns>
         public async Task ActivateAgent(IApplicationAgent caller, IFunctionalAgent agent)
         {
+            if (EvtPreActivateAgent != null)
+            {
+                EvtPreActivateAgent(this, new EventArgs());
+            }
+
             lock (_syncActivateAgent)
             {
                 if (_currentAgent != null && _currentAgent != agent)
@@ -465,16 +448,9 @@ namespace ACAT.Lib.Core.AgentManagement
             }
             else if (exitCode == CompletionCode.ContextSwitch)
             {
-                //Context.AppPanelManager.CloseCurrentPanel();
                 Context.AppPanelManager.ClearStack();
-                EnumWindows.RestoreFocusToTopWindow();
+                //EnumWindows.RestoreFocusToTopWindowOnDesktop();
                 WindowActivityMonitor.GetActiveWindow();
-            }
-            else
-            {
-                PausePanelChangeRequests();
-                EnumWindows.RestoreFocusToTopWindow();
-                ResumePanelChangeRequests(false);
             }
         }
 
@@ -490,6 +466,12 @@ namespace ACAT.Lib.Core.AgentManagement
         /// <returns>Task to wait on</returns>
         public async Task ActivateAgent(IFunctionalAgent agent)
         {
+            if (_currentAgent is IFunctionalAgent)
+            {
+                Log.Debug("Cannot activate functional agent " + agent.Name + ", functional agent " + _currentAgent.Name + " is currently active");
+                return;
+            }
+
             await ActivateAgent(null, agent);
         }
 
@@ -532,6 +514,15 @@ namespace ACAT.Lib.Core.AgentManagement
         }
 
         /// <summary>
+        /// Returns true of a functional agent can be activated now
+        /// </summary>
+        /// <returns></returns>
+        public bool CanActivateFunctionalAgent()
+        {
+            return !(_currentAgent is IFunctionalAgent);
+        }
+
+        /// <summary>
         /// Checks if a widget should be enabled or disabled. This
         /// depends on the context.  This function is invoked for
         /// each widget on the scanner, periodically.
@@ -539,7 +530,7 @@ namespace ACAT.Lib.Core.AgentManagement
         /// it as it is the one that is intimately aware of the context
         /// </summary>
         /// <param name="arg">widget info</param>
-        public void CheckWidgetEnabled(CheckEnabledArgs arg)
+        public void CheckCommandEnabled(CommandEnabledArg arg)
         {
             if (_currentAgent != null)
             {
@@ -550,10 +541,10 @@ namespace ACAT.Lib.Core.AgentManagement
                     return;
                 }
 
-                _currentAgent.CheckWidgetEnabled(arg);
+                _currentAgent.CheckCommandEnabled(arg);
                 if (!arg.Handled && _currentAgent.TextControlAgent != null)
                 {
-                    _currentAgent.TextControlAgent.CheckWidgetEnabled(arg);
+                    _currentAgent.TextControlAgent.CheckCommandEnabled(arg);
                 }
             }
         }
@@ -571,19 +562,51 @@ namespace ACAT.Lib.Core.AgentManagement
         }
 
         /// <summary>
+        /// Returns the agent that has the specified category
+        /// </summary>
+        /// <param name="category">category of the agent</param>
+        /// <returns>agent, null not found</returns>
+        public IApplicationAgent GetAgentByCategory(String category)
+        {
+            return _agentsCache.GetAgentByCategory(category);
+        }
+
+        /// <summary>
         /// Returns the agent that has the specified name
         /// </summary>
         /// <param name="name">name of the agent</param>
-        /// <returns>agent, null if name is invalid</returns>
+        /// <returns>agent, null if not found</returns>
         public IApplicationAgent GetAgentByName(String name)
         {
             return _agentsCache.GetAgentByName(name);
         }
 
         /// <summary>
-        /// Initializes the Agent manager.  Walks the extension directories
-        /// and load the application and functional agents and adds them to
-        /// the agent cache
+        /// Returns the name of the currently active agent
+        /// </summary>
+        /// <returns>Name of the agent</returns>
+        public String GetCurrentAgentName()
+        {
+            return (_currentAgent != null) ? _currentAgent.Name : String.Empty;
+        }
+
+        /// <summary>
+        /// Returns a list of Agent objects.
+        /// LoadExtensions must be called before this
+        /// </summary>
+        /// <returns>list</returns>
+        public IEnumerable<object> GetExtensions()
+        {
+            if (_agentsCache == null)
+            {
+                return new List<object>();
+            }
+
+            return _agentsCache.GetExtensions();
+        }
+
+        /// <summary>
+        /// Initializes the Agent manager.
         /// </summary>
         /// <param name="extensionDirs">directories to walk</param>
         /// <returns>true on success</returns>
@@ -592,28 +615,54 @@ namespace ACAT.Lib.Core.AgentManagement
         {
             if (_agentsCache == null)
             {
+                return false;
+            }
+
+            _genericAppAgent = _agentsCache.GetAgent(GenericAppAgentName);
+            if (_genericAppAgent == null)
+            {
+                _agentsCache.AddAgentByType(typeof(UnsupportedAppAgent));
+                _genericAppAgent = _agentsCache.GetAgent(GenericAppAgentName);
+            }
+
+            _agentsCache.AddAgentByType(typeof(NullAgent));
+            _nullAgent = _agentsCache.GetAgent(NullAgentName);
+
+            _dialogAgent = _agentsCache.GetAgent(DialogControlAgentName);
+            _menuControlAgent = _agentsCache.GetAgent(MenuControlAgentName);
+
+            _textControlAgent = _genericAppAgent.TextControlAgent;
+
+            WindowActivityMonitor.EvtFocusChanged += WindowActivityMonitor_EvtFocusChanged;
+
+            return true;
+        }
+
+        /// <summary>
+        /// Returns true if the current agent is the one specified
+        /// by the agent name
+        /// </summary>
+        /// <param name="agentName">agent name to check for</param>
+        /// <returns>true if it is</returns>
+        public bool IsCurrentAgent(String agentName)
+        {
+            return (_currentAgent != null) && (String.Compare(_currentAgent.Name, agentName, true) == 0);
+        }
+
+        /// <summary>
+        /// Recursively descends into each of the directories
+        /// and loads the Agents (both application agents and
+        /// functional agents) in there
+        /// </summary>
+        /// <param name="extensionDirs">directories to look into</param>
+        /// <returns>true on success</returns>
+        public bool LoadExtensions(IEnumerable<String> extensionDirs)
+        {
+            if (_agentsCache == null)
+            {
                 _agentsCache = new AgentsCache();
                 _agentsCache.EvtAgentAdded += _agentsCache_EvtAgentAdded;
-                _agentsCache.Init(extensionDirs);
-
-                _genericAppAgent = _agentsCache.GetAgent(GenericAppAgentName);
-                if (_genericAppAgent == null)
-                {
-                    _agentsCache.AddAgentByType(typeof(UnsupportedAppAgent));
-                    _genericAppAgent = _agentsCache.GetAgent(GenericAppAgentName);
-                }
-
-                _agentsCache.AddAgentByType(typeof(NullAgent));
-                _nullAgent = _agentsCache.GetAgent(NullAgentName);
-
-                _dialogAgent = _agentsCache.GetAgent(DialogControlAgentName);
-                _menuControlAgent = _agentsCache.GetAgent(MenuControlAgentName);
-
-                _textControlAgent = _genericAppAgent.TextControlAgent;
-
-                WindowActivityMonitor.EvtFocusChanged += WindowActivityMonitor_EvtFocusChanged;
-
-                //WindowActivityMonitor.GetActiveWindow();
+                return _agentsCache.Init(extensionDirs);
             }
 
             return true;
@@ -740,6 +789,77 @@ namespace ACAT.Lib.Core.AgentManagement
             WindowActivityMonitor.GetActiveWindow();
         }
 
+        /// <summary>
+        /// Displays the preferences dialog for the Agent manager.
+        /// Displays a list of agents it has discovered
+        /// </summary>
+        public void ShowPreferencesAppAgents()
+        {
+            var agents = GetExtensions();
+
+            var list = new List<object>();
+            foreach (var agent in agents)
+            {
+                if (!(agent is IFunctionalAgent))
+                {
+                    var prefs = agent as ISupportsPreferences;
+
+                    if (prefs.GetPreferences() != null || prefs.SupportsPreferencesDialog)
+                    {
+                        list.Add(agent);
+                    }
+                }
+            }
+
+            var categories = list.Select(agent => new PreferencesCategory(agent)).ToList();
+
+            var form = new PreferencesCategorySelectForm
+            {
+                DisallowEnable = true,
+                ShowEnable = false,
+                PreferencesCategories = categories,
+                Title = "Applications"
+            };
+
+            form.ShowDialog();
+        }
+
+        /// <summary>
+        /// Displays the preferences dialog for the Agent manager.
+        /// Displays a list of functional agents it has discovered,
+        /// only if they have custom dialog or settings to be changed
+        /// </summary>
+        public void ShowPreferencesFunctionalAgents()
+        {
+            var agents = GetExtensions();
+
+            var list = new List<object>();
+            foreach (var agent in agents)
+            {
+                if (agent is IFunctionalAgent)
+                {
+                    var prefs = agent as ISupportsPreferences;
+
+                    if (prefs.GetPreferences() != null || prefs.SupportsPreferencesDialog)
+                    {
+                        list.Add(agent);
+                    }
+                }
+            }
+
+            var categories = list.Select(agent => new PreferencesCategory(agent)).ToList();
+
+            var form = new PreferencesCategorySelectForm
+            {
+                DisallowEnable = true,
+                ShowEnable = false,
+                PreferencesCategories = categories,
+                Title = "Tools"
+            };
+
+            form.ShowDialog();
+        }
+
         [DllImport("kernel32.dll")]
         private static extern uint GetCurrentThreadId();
 
@@ -763,18 +883,18 @@ namespace ACAT.Lib.Core.AgentManagement
         /// <param name="mouseEventArgs">event args</param>
         private void _keyboardActuator_EvtMouseDown(object sender, MouseEventArgs mouseEventArgs)
         {
-            if (_currentAgent != null)
-            {
-                bool hitTest = false;
-                if (EvtScannerHitTest != null)
-                {
-                    hitTest = EvtScannerHitTest(mouseEventArgs.X, mouseEventArgs.Y);
-                }
+            int hitCount = 0;
 
-                if (!hitTest && _currentAgent.TextControlAgent != null)
-                {
-                    _currentAgent.TextControlAgent.OnMouseDown(mouseEventArgs);
-                }
+            if (EvtScannerHitTest != null)
+            {
+                var delegates = EvtScannerHitTest.GetInvocationList();
+
+                hitCount += delegates.Cast<ScannerHitTest>().Count(hitTest => hitTest.Invoke(mouseEventArgs.X, mouseEventArgs.Y));
+            }
+
+            if (hitCount == 0)
+            {
+                EvtNonScannerMouseDown(this, mouseEventArgs);
             }
         }
 
@@ -803,13 +923,15 @@ namespace ACAT.Lib.Core.AgentManagement
             Task task = Task.Factory.StartNew(() =>
             {
                 Log.Debug("Calling funcAgent.activate: " + agent.Name);
-                funcAgent.IsClosing = false;
+                //funcAgent.IsClosing = false;
                 funcAgent.ExitCommand = null;
 
-                form.Invoke(new MethodInvoker(delegate()
+                form.Invoke(new MethodInvoker(delegate
                 {
                     Context.AppPanelManager.NewStack();
+                    Log.Debug("Before activate " + funcAgent.Name);
                     funcAgent.Activate();
+                    Log.Debug("Returned from activate " + funcAgent.Name + ", calling closestack");
                     Context.AppPanelManager.CloseStack();
                 }));
 
@@ -817,8 +939,13 @@ namespace ACAT.Lib.Core.AgentManagement
                 Log.Debug("Waiting on CloseEvent...: " + agent.Name);
                 funcAgent.CloseEvent.WaitOne();
                 Log.Debug("Returned from CloseEvent: " + agent.Name);
+
+                funcAgent.PostClose();
             });
+
+            Log.Debug("Before await task");
             await task;
+            Log.Debug("After await task");
 
             Windows.CloseForm(form);
         }
@@ -872,29 +999,37 @@ namespace ACAT.Lib.Core.AgentManagement
                         // check if a dialog or menu is active
                         Log.Debug("Adhoc agent not present for " + monitorInfo.FgHwnd);
 
-                        if (EnableContextualMenusForDialogs &&
-                            (String.Compare(processName, _currentProcessName, true) != 0) &&
-                            isDialog(monitorInfo))
+                        IntPtr parent = User32Interop.GetParent(monitorInfo.FgHwnd);
+                        if (parent != IntPtr.Zero)
                         {
-                            Log.Debug("Fg window is a dialog.  Setting agent to dialog agent");
+                            if (EnableContextualMenusForDialogs &&
+                                (String.Compare(processName, _currentProcessName, true) != 0) &&
+                                isDialog(monitorInfo))
+                            {
+                                Log.Debug("Fg window is a dialog.  Setting agent to dialog agent");
 
-                            agent = _dialogAgent;
+                                agent = _dialogAgent;
+                            }
+                            else if (EnableContextualMenusForMenus && isMenu(monitorInfo))
+                            {
+                                Log.Debug("Fg window is a menu.  Setting agent to menu agent");
+                                agent = _menuControlAgent;
+                            }
                         }
-                        else if (EnableContextualMenusForMenus && isMenu(monitorInfo))
+
+                        if (agent == null)
                         {
-                            Log.Debug("Fg window is a menu.  Setting agent to menu agent");
-                            agent = _menuControlAgent;
-                        }
-                        else if (Windows.IsMinimized(monitorInfo.FgHwnd))
-                        {
-                            Log.Debug("Window is minimized. Use generic agent");
-                            agent = _genericAppAgent;
-                        }
-                        else
-                        {
-                            // check if there is a dedicated agent for this process
-                            Log.Debug("Getting agent for " + processName);
-                            agent = _agentsCache.GetAgent(monitorInfo.FgProcess);
+                            if (Windows.IsMinimized(monitorInfo.FgHwnd))
+                            {
+                                Log.Debug("Window is minimized. Use generic agent");
+                                agent = _genericAppAgent;
+                            }
+                            else
+                            {
+                                // check if there is a dedicated agent for this process
+                                Log.Debug("Getting agent for " + processName);
+                                agent = _agentsCache.GetAgent(monitorInfo.FgProcess);
+                            }
                         }
                     }
                     else
@@ -1172,7 +1307,9 @@ namespace ACAT.Lib.Core.AgentManagement
             {
                 var windowPattern = objPattern as WindowPattern;
                 retVal = (!windowPattern.Current.CanMinimize && !windowPattern.Current.CanMaximize) || windowPattern.Current.IsModal;
-                Log.Debug("CanMinimize: " + windowPattern.Current.CanMinimize + ", isModal: " + windowPattern.Current.IsModal);
+                Log.Debug("CanMinimize: " + windowPattern.Current.CanMinimize + ", canMaximize: " + windowPattern.Current.CanMaximize + ", isModal: " + windowPattern.Current.IsModal);
+                Log.Debug("retVal: " + retVal);
+
                 retVal = retVal && !Windows.IsMinimized(monitorInfo.FgHwnd);
             }
 
@@ -1188,7 +1325,7 @@ namespace ACAT.Lib.Core.AgentManagement
         /// <returns>true if it is</returns>
         private bool isMenu(WindowActivityMonitorInfo monitorInfo)
         {
-            return (monitorInfo.FocusedElement.Current.ControlType.ProgrammaticName == "ControlType.Menu" ||
+            return (monitorInfo.FocusedElement.Current.ControlType.ProgrammaticName == "ControlType.AppMenu" ||
                     monitorInfo.FocusedElement.Current.ControlType.ProgrammaticName == "ControlType.MenuItem");
         }
 
@@ -1199,14 +1336,14 @@ namespace ACAT.Lib.Core.AgentManagement
         /// <param name="keyEventArgs">event args</param>
         private void keyboardActuator_EvtKeyDown(object sender, KeyEventArgs keyEventArgs)
         {
-            if (AgentUtils.IsKeyDown(Keys.LMenu) ||
-                AgentUtils.IsKeyDown(Keys.RMenu) ||
-                AgentUtils.IsKeyDown(Keys.LControlKey) ||
-                AgentUtils.IsKeyDown(Keys.RControlKey))
+            if (TextController.IsKeyDown(Keys.LMenu) ||
+                TextController.IsKeyDown(Keys.RMenu) ||
+                TextController.IsKeyDown(Keys.LControlKey) ||
+                TextController.IsKeyDown(Keys.RControlKey))
             {
                 _currentEditingMode = EditingMode.Edit;
             }
-            else if (AgentUtils.IsPrintable(keyEventArgs.KeyCode))
+            else if (TextUtils.IsPrintable(keyEventArgs.KeyCode))
             {
                 _currentEditingMode = EditingMode.TextEntry;
             }
@@ -1340,20 +1477,36 @@ namespace ACAT.Lib.Core.AgentManagement
             //  ((focusedElement != null) ? focusedElement.Current.ClassName : "null") + "]");
 
             bool handled = false;
+
             if (_currentAgent is IFunctionalAgent)
             {
-                _currentAgent.OnFocusChanged(monitorInfo, ref handled);
+                var functionalAgent = _currentAgent as IFunctionalAgent;
+
+                Log.Debug(_currentAgent.Name + ", IsActive: " + functionalAgent.IsActive + ", IsClosing: " + functionalAgent.IsClosing);
+
+                if (functionalAgent.IsActive && !functionalAgent.IsClosing)
+                {
+                    _currentAgent.OnFocusChanged(monitorInfo, ref handled);
+                }
+
+                if (EvtFocusChanged != null)
+                {
+                    EvtFocusChanged(this, new FocusChangedEventArgs(monitorInfo));
+                }
+
+                if (!functionalAgent.IsClosing)
+                {
+                    return;
+                }
+            }
+
+            if (EnableAppAgentContextSwitch)
+            {
+                activateAppAgent(monitorInfo);
             }
             else
             {
-                if (EnableAppAgentContextSwitch)
-                {
-                    activateAppAgent(monitorInfo);
-                }
-                else
-                {
-                    disallowContextSwitch(monitorInfo);
-                }
+                disallowContextSwitch(monitorInfo);
             }
 
             if (_currentAgent != null)

@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="MenuControlAgentSettings.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,9 +18,11 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
+using ACAT.Lib.Core.AgentManagement;
+using ACAT.Lib.Core.PreferencesManagement;
 using System;
 using System.Diagnostics.CodeAnalysis;
-using ACAT.Lib.Core.Utility;
+using System.Xml.Serialization;
 
 #region SupressStyleCopWarnings
 
@@ -60,23 +62,16 @@ using ACAT.Lib.Core.Utility;
 namespace ACATCore.Extensions.Base.AppAgents.MenuControl
 {
     /// <summary>
-    /// Settings for the Menu Control Agent.
+    /// Settings for the AppMenu Control Agent.
     /// </summary>
     [Serializable]
-    public class MenuControlAgentSettings : PreferencesBase
+    public class MenuControlAgentSettings : AppAgentsPreferencesBase
     {
         /// <summary>
         /// Name of the settings file
         /// </summary>
-        [NonSerialized]
+        [NonSerialized, XmlIgnore]
         public static String PreferencesFilePath;
-
-        /// <summary>
-        /// Set to true to track focus changes in the foreground
-        /// window and display the appropriate scanner.  If false,
-        /// always displays the Alphabet scanner.
-        /// </summary>
-        public bool AutoSwitchScannerEnable;
 
         /// <summary>
         /// Initializes a new instance of the class.
@@ -96,12 +91,12 @@ namespace ACATCore.Extensions.Base.AppAgents.MenuControl
         }
 
         /// <summary>
-        /// Save settings.  No op for now
+        /// Save settings to the preferences file (PreferencesFilePath)
         /// </summary>
-        /// <returns>true always</returns>
+        /// <returns>true if successful</returns>
         public override bool Save()
         {
-            return true;
+            return Save(this, PreferencesFilePath);
         }
     }
 }

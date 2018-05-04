@@ -68,7 +68,7 @@
             this.svalLineCycles = new System.Windows.Forms.TextBox();
             this.svalLineThickness = new System.Windows.Forms.TextBox();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.label1 = new System.Windows.Forms.Label();
+            this.panelTitle = new System.Windows.Forms.Label();
             this.svalRectangleSpeed = new System.Windows.Forms.TextBox();
             ((System.ComponentModel.ISupportInitialize)(this.tbLineThickness)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.tbLineCycles)).BeginInit();
@@ -80,9 +80,9 @@
             // 
             // lblRestoreDefaults
             // 
-            this.lblRestoreDefaults.Location = new System.Drawing.Point(343, 413);
+            this.lblRestoreDefaults.Location = new System.Drawing.Point(396, 413);
             this.lblRestoreDefaults.Name = "lblRestoreDefaults";
-            this.lblRestoreDefaults.Size = new System.Drawing.Size(152, 47);
+            this.lblRestoreDefaults.Size = new System.Drawing.Size(172, 47);
             this.lblRestoreDefaults.TabIndex = 166;
             this.lblRestoreDefaults.TabStop = false;
             this.lblRestoreDefaults.Text = "Defaults";
@@ -90,9 +90,9 @@
             // 
             // lblBack
             // 
-            this.lblBack.Location = new System.Drawing.Point(180, 413);
+            this.lblBack.Location = new System.Drawing.Point(206, 413);
             this.lblBack.Name = "lblBack";
-            this.lblBack.Size = new System.Drawing.Size(152, 47);
+            this.lblBack.Size = new System.Drawing.Size(172, 47);
             this.lblBack.TabIndex = 165;
             this.lblBack.TabStop = false;
             this.lblBack.Text = "Cancel";
@@ -100,9 +100,9 @@
             // 
             // lblOK
             // 
-            this.lblOK.Location = new System.Drawing.Point(15, 413);
+            this.lblOK.Location = new System.Drawing.Point(19, 413);
             this.lblOK.Name = "lblOK";
-            this.lblOK.Size = new System.Drawing.Size(152, 47);
+            this.lblOK.Size = new System.Drawing.Size(172, 47);
             this.lblOK.TabIndex = 164;
             this.lblOK.TabStop = false;
             this.lblOK.Text = "OK";
@@ -110,17 +110,18 @@
             // 
             // lblEnableVerticalRectScan
             // 
+            this.lblEnableVerticalRectScan.AutoSize = true;
             this.lblEnableVerticalRectScan.Font = new System.Drawing.Font("Arial", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lblEnableVerticalRectScan.Location = new System.Drawing.Point(137, 363);
+            this.lblEnableVerticalRectScan.Location = new System.Drawing.Point(80, 363);
             this.lblEnableVerticalRectScan.Name = "lblEnableVerticalRectScan";
-            this.lblEnableVerticalRectScan.Size = new System.Drawing.Size(319, 29);
+            this.lblEnableVerticalRectScan.Size = new System.Drawing.Size(285, 24);
             this.lblEnableVerticalRectScan.TabIndex = 160;
-            this.lblEnableVerticalRectScan.Text = "Enable Vertical Rectangle Scan";
+            this.lblEnableVerticalRectScan.Text = "EnableVerticalRectangleScan";
             // 
             // pbEnableVerticalRectScan
             // 
             this.pbEnableVerticalRectScan.Font = new System.Drawing.Font("Arial", 14.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.pbEnableVerticalRectScan.Location = new System.Drawing.Point(97, 360);
+            this.pbEnableVerticalRectScan.Location = new System.Drawing.Point(40, 360);
             this.pbEnableVerticalRectScan.Name = "pbEnableVerticalRectScan";
             this.pbEnableVerticalRectScan.Size = new System.Drawing.Size(34, 28);
             this.pbEnableVerticalRectScan.TabIndex = 162;
@@ -128,7 +129,7 @@
             // 
             // smaxLineThickness
             // 
-            this.smaxLineThickness.Location = new System.Drawing.Point(372, 318);
+            this.smaxLineThickness.Location = new System.Drawing.Point(433, 318);
             this.smaxLineThickness.Name = "smaxLineThickness";
             this.smaxLineThickness.Size = new System.Drawing.Size(19, 13);
             this.smaxLineThickness.TabIndex = 159;
@@ -137,7 +138,7 @@
             // 
             // sminLineThickness
             // 
-            this.sminLineThickness.Location = new System.Drawing.Point(238, 318);
+            this.sminLineThickness.Location = new System.Drawing.Point(299, 318);
             this.sminLineThickness.Name = "sminLineThickness";
             this.sminLineThickness.Size = new System.Drawing.Size(13, 13);
             this.sminLineThickness.TabIndex = 158;
@@ -146,7 +147,7 @@
             // 
             // smaxLineCycles
             // 
-            this.smaxLineCycles.Location = new System.Drawing.Point(372, 260);
+            this.smaxLineCycles.Location = new System.Drawing.Point(434, 260);
             this.smaxLineCycles.Name = "smaxLineCycles";
             this.smaxLineCycles.Size = new System.Drawing.Size(19, 13);
             this.smaxLineCycles.TabIndex = 138;
@@ -155,7 +156,7 @@
             // 
             // tbLineThickness
             // 
-            this.tbLineThickness.Location = new System.Drawing.Point(261, 295);
+            this.tbLineThickness.Location = new System.Drawing.Point(322, 295);
             this.tbLineThickness.Name = "tbLineThickness";
             this.tbLineThickness.Size = new System.Drawing.Size(110, 45);
             this.tbLineThickness.TabIndex = 142;
@@ -163,10 +164,11 @@
             // 
             // lblLineWidth
             // 
+            this.lblLineWidth.AutoSize = true;
             this.lblLineWidth.Font = new System.Drawing.Font("Arial", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblLineWidth.Location = new System.Drawing.Point(43, 293);
             this.lblLineWidth.Name = "lblLineWidth";
-            this.lblLineWidth.Size = new System.Drawing.Size(170, 24);
+            this.lblLineWidth.Size = new System.Drawing.Size(150, 24);
             this.lblLineWidth.TabIndex = 129;
             this.lblLineWidth.Text = "Line Thickness";
             this.lblLineWidth.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -175,7 +177,7 @@
             // 
             this.ltbLineThicknessMore.BackColor = System.Drawing.Color.Transparent;
             this.ltbLineThicknessMore.Font = new System.Drawing.Font("Arial", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.ltbLineThicknessMore.Location = new System.Drawing.Point(374, 295);
+            this.ltbLineThicknessMore.Location = new System.Drawing.Point(435, 295);
             this.ltbLineThicknessMore.Name = "ltbLineThicknessMore";
             this.ltbLineThicknessMore.Size = new System.Drawing.Size(25, 25);
             this.ltbLineThicknessMore.TabIndex = 157;
@@ -184,17 +186,18 @@
             // 
             // lblHorizontalSweeps
             // 
+            this.lblHorizontalSweeps.AutoSize = true;
             this.lblHorizontalSweeps.Font = new System.Drawing.Font("Arial", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblHorizontalSweeps.Location = new System.Drawing.Point(43, 232);
             this.lblHorizontalSweeps.Name = "lblHorizontalSweeps";
-            this.lblHorizontalSweeps.Size = new System.Drawing.Size(170, 24);
+            this.lblHorizontalSweeps.Size = new System.Drawing.Size(120, 24);
             this.lblHorizontalSweeps.TabIndex = 128;
             this.lblHorizontalSweeps.Text = "Line Cycles";
             this.lblHorizontalSweeps.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // tbLineCycles
             // 
-            this.tbLineCycles.Location = new System.Drawing.Point(259, 236);
+            this.tbLineCycles.Location = new System.Drawing.Point(321, 236);
             this.tbLineCycles.Name = "tbLineCycles";
             this.tbLineCycles.Size = new System.Drawing.Size(110, 45);
             this.tbLineCycles.TabIndex = 141;
@@ -202,17 +205,18 @@
             // 
             // lblHorizontalSpeed
             // 
+            this.lblHorizontalSpeed.AutoSize = true;
             this.lblHorizontalSpeed.Font = new System.Drawing.Font("Arial", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblHorizontalSpeed.Location = new System.Drawing.Point(43, 174);
             this.lblHorizontalSpeed.Name = "lblHorizontalSpeed";
-            this.lblHorizontalSpeed.Size = new System.Drawing.Size(170, 24);
+            this.lblHorizontalSpeed.Size = new System.Drawing.Size(116, 24);
             this.lblHorizontalSpeed.TabIndex = 127;
             this.lblHorizontalSpeed.Text = "Line Speed";
             this.lblHorizontalSpeed.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // sminLineCycles
             // 
-            this.sminLineCycles.Location = new System.Drawing.Point(238, 260);
+            this.sminLineCycles.Location = new System.Drawing.Point(300, 260);
             this.sminLineCycles.Name = "sminLineCycles";
             this.sminLineCycles.Size = new System.Drawing.Size(13, 13);
             this.sminLineCycles.TabIndex = 137;
@@ -221,17 +225,18 @@
             // 
             // lblVerticalSweeps
             // 
+            this.lblVerticalSweeps.AutoSize = true;
             this.lblVerticalSweeps.Font = new System.Drawing.Font("Arial", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblVerticalSweeps.Location = new System.Drawing.Point(43, 118);
             this.lblVerticalSweeps.Name = "lblVerticalSweeps";
-            this.lblVerticalSweeps.Size = new System.Drawing.Size(182, 24);
+            this.lblVerticalSweeps.Size = new System.Drawing.Size(174, 24);
             this.lblVerticalSweeps.TabIndex = 126;
             this.lblVerticalSweeps.Text = "Rectangle Cycles";
             this.lblVerticalSweeps.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // tbLineSpeed
             // 
-            this.tbLineSpeed.Location = new System.Drawing.Point(257, 172);
+            this.tbLineSpeed.Location = new System.Drawing.Point(319, 172);
             this.tbLineSpeed.Name = "tbLineSpeed";
             this.tbLineSpeed.Size = new System.Drawing.Size(110, 45);
             this.tbLineSpeed.TabIndex = 140;
@@ -241,7 +246,7 @@
             // 
             this.ltbLineThicknessLess.BackColor = System.Drawing.Color.Transparent;
             this.ltbLineThicknessLess.Font = new System.Drawing.Font("Arial", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.ltbLineThicknessLess.Location = new System.Drawing.Point(231, 295);
+            this.ltbLineThicknessLess.Location = new System.Drawing.Point(292, 295);
             this.ltbLineThicknessLess.Name = "ltbLineThicknessLess";
             this.ltbLineThicknessLess.Size = new System.Drawing.Size(25, 25);
             this.ltbLineThicknessLess.TabIndex = 156;
@@ -250,6 +255,7 @@
             // 
             // lblVerticalSpeed
             // 
+            this.lblVerticalSpeed.AutoSize = true;
             this.lblVerticalSpeed.Font = new System.Drawing.Font("Arial", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblVerticalSpeed.Location = new System.Drawing.Point(43, 66);
             this.lblVerticalSpeed.Name = "lblVerticalSpeed";
@@ -260,7 +266,7 @@
             // 
             // tbRectangleCycles
             // 
-            this.tbRectangleCycles.Location = new System.Drawing.Point(257, 118);
+            this.tbRectangleCycles.Location = new System.Drawing.Point(320, 118);
             this.tbRectangleCycles.Name = "tbRectangleCycles";
             this.tbRectangleCycles.Size = new System.Drawing.Size(110, 45);
             this.tbRectangleCycles.TabIndex = 139;
@@ -268,7 +274,7 @@
             // 
             // smaxLineSpeed
             // 
-            this.smaxLineSpeed.Location = new System.Drawing.Point(372, 198);
+            this.smaxLineSpeed.Location = new System.Drawing.Point(434, 198);
             this.smaxLineSpeed.Name = "smaxLineSpeed";
             this.smaxLineSpeed.Size = new System.Drawing.Size(25, 13);
             this.smaxLineSpeed.TabIndex = 135;
@@ -277,7 +283,7 @@
             // 
             // tbRectangleSpeed
             // 
-            this.tbRectangleSpeed.Location = new System.Drawing.Point(258, 65);
+            this.tbRectangleSpeed.Location = new System.Drawing.Point(320, 65);
             this.tbRectangleSpeed.Name = "tbRectangleSpeed";
             this.tbRectangleSpeed.Size = new System.Drawing.Size(110, 45);
             this.tbRectangleSpeed.TabIndex = 136;
@@ -287,7 +293,7 @@
             // 
             this.ltbLineCyclesMore.BackColor = System.Drawing.Color.Transparent;
             this.ltbLineCyclesMore.Font = new System.Drawing.Font("Arial", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.ltbLineCyclesMore.Location = new System.Drawing.Point(374, 236);
+            this.ltbLineCyclesMore.Location = new System.Drawing.Point(436, 236);
             this.ltbLineCyclesMore.Name = "ltbLineCyclesMore";
             this.ltbLineCyclesMore.Size = new System.Drawing.Size(25, 25);
             this.ltbLineCyclesMore.TabIndex = 155;
@@ -296,7 +302,7 @@
             // 
             // sminLineSpeed
             // 
-            this.sminLineSpeed.Location = new System.Drawing.Point(238, 198);
+            this.sminLineSpeed.Location = new System.Drawing.Point(300, 198);
             this.sminLineSpeed.Name = "sminLineSpeed";
             this.sminLineSpeed.Size = new System.Drawing.Size(13, 13);
             this.sminLineSpeed.TabIndex = 134;
@@ -307,7 +313,7 @@
             // 
             this.ltbLineCyclesLess.BackColor = System.Drawing.Color.Transparent;
             this.ltbLineCyclesLess.Font = new System.Drawing.Font("Arial", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.ltbLineCyclesLess.Location = new System.Drawing.Point(231, 236);
+            this.ltbLineCyclesLess.Location = new System.Drawing.Point(293, 236);
             this.ltbLineCyclesLess.Name = "ltbLineCyclesLess";
             this.ltbLineCyclesLess.Size = new System.Drawing.Size(25, 25);
             this.ltbLineCyclesLess.TabIndex = 154;
@@ -316,7 +322,7 @@
             // 
             // smaxRectangleCycles
             // 
-            this.smaxRectangleCycles.Location = new System.Drawing.Point(372, 143);
+            this.smaxRectangleCycles.Location = new System.Drawing.Point(435, 143);
             this.smaxRectangleCycles.Name = "smaxRectangleCycles";
             this.smaxRectangleCycles.Size = new System.Drawing.Size(19, 13);
             this.smaxRectangleCycles.TabIndex = 133;
@@ -327,7 +333,7 @@
             // 
             this.ltbLineSpeedMore.BackColor = System.Drawing.Color.Transparent;
             this.ltbLineSpeedMore.Font = new System.Drawing.Font("Arial", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.ltbLineSpeedMore.Location = new System.Drawing.Point(374, 172);
+            this.ltbLineSpeedMore.Location = new System.Drawing.Point(436, 172);
             this.ltbLineSpeedMore.Name = "ltbLineSpeedMore";
             this.ltbLineSpeedMore.Size = new System.Drawing.Size(25, 25);
             this.ltbLineSpeedMore.TabIndex = 153;
@@ -336,7 +342,7 @@
             // 
             // sminRectangleCycles
             // 
-            this.sminRectangleCycles.Location = new System.Drawing.Point(238, 143);
+            this.sminRectangleCycles.Location = new System.Drawing.Point(301, 143);
             this.sminRectangleCycles.Name = "sminRectangleCycles";
             this.sminRectangleCycles.Size = new System.Drawing.Size(13, 13);
             this.sminRectangleCycles.TabIndex = 132;
@@ -347,7 +353,7 @@
             // 
             this.ltbLineSpeedLess.BackColor = System.Drawing.Color.Transparent;
             this.ltbLineSpeedLess.Font = new System.Drawing.Font("Arial", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.ltbLineSpeedLess.Location = new System.Drawing.Point(231, 172);
+            this.ltbLineSpeedLess.Location = new System.Drawing.Point(293, 172);
             this.ltbLineSpeedLess.Name = "ltbLineSpeedLess";
             this.ltbLineSpeedLess.Size = new System.Drawing.Size(25, 25);
             this.ltbLineSpeedLess.TabIndex = 152;
@@ -358,7 +364,7 @@
             // 
             this.ltbRectangleSpeedMore.BackColor = System.Drawing.Color.Transparent;
             this.ltbRectangleSpeedMore.Font = new System.Drawing.Font("Arial", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.ltbRectangleSpeedMore.Location = new System.Drawing.Point(374, 65);
+            this.ltbRectangleSpeedMore.Location = new System.Drawing.Point(436, 65);
             this.ltbRectangleSpeedMore.Name = "ltbRectangleSpeedMore";
             this.ltbRectangleSpeedMore.Size = new System.Drawing.Size(25, 25);
             this.ltbRectangleSpeedMore.TabIndex = 149;
@@ -369,7 +375,7 @@
             // 
             this.ltbRectangleCyclesMore.BackColor = System.Drawing.Color.Transparent;
             this.ltbRectangleCyclesMore.Font = new System.Drawing.Font("Arial", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.ltbRectangleCyclesMore.Location = new System.Drawing.Point(374, 118);
+            this.ltbRectangleCyclesMore.Location = new System.Drawing.Point(436, 118);
             this.ltbRectangleCyclesMore.Name = "ltbRectangleCyclesMore";
             this.ltbRectangleCyclesMore.Size = new System.Drawing.Size(25, 25);
             this.ltbRectangleCyclesMore.TabIndex = 151;
@@ -378,7 +384,7 @@
             // 
             // smaxRectangleSpeed
             // 
-            this.smaxRectangleSpeed.Location = new System.Drawing.Point(372, 90);
+            this.smaxRectangleSpeed.Location = new System.Drawing.Point(434, 90);
             this.smaxRectangleSpeed.Name = "smaxRectangleSpeed";
             this.smaxRectangleSpeed.Size = new System.Drawing.Size(25, 13);
             this.smaxRectangleSpeed.TabIndex = 131;
@@ -389,7 +395,7 @@
             // 
             this.ltbRectangleCyclesLess.BackColor = System.Drawing.Color.Transparent;
             this.ltbRectangleCyclesLess.Font = new System.Drawing.Font("Arial", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.ltbRectangleCyclesLess.Location = new System.Drawing.Point(231, 118);
+            this.ltbRectangleCyclesLess.Location = new System.Drawing.Point(294, 118);
             this.ltbRectangleCyclesLess.Name = "ltbRectangleCyclesLess";
             this.ltbRectangleCyclesLess.Size = new System.Drawing.Size(25, 25);
             this.ltbRectangleCyclesLess.TabIndex = 150;
@@ -398,7 +404,7 @@
             // 
             // sminRectangleSpeed
             // 
-            this.sminRectangleSpeed.Location = new System.Drawing.Point(238, 90);
+            this.sminRectangleSpeed.Location = new System.Drawing.Point(300, 90);
             this.sminRectangleSpeed.Name = "sminRectangleSpeed";
             this.sminRectangleSpeed.Size = new System.Drawing.Size(13, 13);
             this.sminRectangleSpeed.TabIndex = 130;
@@ -409,7 +415,7 @@
             // 
             this.ltbRectangleSpeedLess.BackColor = System.Drawing.Color.Transparent;
             this.ltbRectangleSpeedLess.Font = new System.Drawing.Font("Arial", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.ltbRectangleSpeedLess.Location = new System.Drawing.Point(231, 65);
+            this.ltbRectangleSpeedLess.Location = new System.Drawing.Point(293, 65);
             this.ltbRectangleSpeedLess.Name = "ltbRectangleSpeedLess";
             this.ltbRectangleSpeedLess.Size = new System.Drawing.Size(25, 25);
             this.ltbRectangleSpeedLess.TabIndex = 148;
@@ -419,7 +425,7 @@
             // svalRectangleCycles
             // 
             this.svalRectangleCycles.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.svalRectangleCycles.Location = new System.Drawing.Point(423, 119);
+            this.svalRectangleCycles.Location = new System.Drawing.Point(486, 119);
             this.svalRectangleCycles.Name = "svalRectangleCycles";
             this.svalRectangleCycles.ReadOnly = true;
             this.svalRectangleCycles.Size = new System.Drawing.Size(55, 20);
@@ -429,7 +435,7 @@
             // svalLineSpeed
             // 
             this.svalLineSpeed.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.svalLineSpeed.Location = new System.Drawing.Point(423, 173);
+            this.svalLineSpeed.Location = new System.Drawing.Point(485, 173);
             this.svalLineSpeed.Name = "svalLineSpeed";
             this.svalLineSpeed.ReadOnly = true;
             this.svalLineSpeed.Size = new System.Drawing.Size(55, 20);
@@ -439,7 +445,7 @@
             // svalLineCycles
             // 
             this.svalLineCycles.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.svalLineCycles.Location = new System.Drawing.Point(423, 237);
+            this.svalLineCycles.Location = new System.Drawing.Point(485, 237);
             this.svalLineCycles.Name = "svalLineCycles";
             this.svalLineCycles.ReadOnly = true;
             this.svalLineCycles.Size = new System.Drawing.Size(55, 20);
@@ -449,7 +455,7 @@
             // svalLineThickness
             // 
             this.svalLineThickness.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.svalLineThickness.Location = new System.Drawing.Point(423, 296);
+            this.svalLineThickness.Location = new System.Drawing.Point(484, 296);
             this.svalLineThickness.Name = "svalLineThickness";
             this.svalLineThickness.ReadOnly = true;
             this.svalLineThickness.Size = new System.Drawing.Size(55, 20);
@@ -458,27 +464,28 @@
             // 
             // groupBox1
             // 
-            this.groupBox1.Controls.Add(this.label1);
+            this.groupBox1.Controls.Add(this.panelTitle);
             this.groupBox1.Location = new System.Drawing.Point(7, 21);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(497, 451);
+            this.groupBox1.Size = new System.Drawing.Size(577, 451);
             this.groupBox1.TabIndex = 167;
             this.groupBox1.TabStop = false;
             // 
-            // label1
+            // panelTitle
             // 
-            this.label1.Font = new System.Drawing.Font("Arial", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label1.Location = new System.Drawing.Point(14, -3);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(252, 24);
-            this.label1.TabIndex = 161;
-            this.label1.Text = "Mouse Scan Settings";
-            this.label1.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.panelTitle.AutoSize = true;
+            this.panelTitle.Font = new System.Drawing.Font("Arial", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.panelTitle.Location = new System.Drawing.Point(14, -3);
+            this.panelTitle.Name = "panelTitle";
+            this.panelTitle.Size = new System.Drawing.Size(197, 24);
+            this.panelTitle.TabIndex = 161;
+            this.panelTitle.Text = "MouseScanSettings";
+            this.panelTitle.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // svalRectangleSpeed
             // 
             this.svalRectangleSpeed.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.svalRectangleSpeed.Location = new System.Drawing.Point(423, 68);
+            this.svalRectangleSpeed.Location = new System.Drawing.Point(485, 68);
             this.svalRectangleSpeed.Name = "svalRectangleSpeed";
             this.svalRectangleSpeed.ReadOnly = true;
             this.svalRectangleSpeed.Size = new System.Drawing.Size(55, 20);
@@ -489,7 +496,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(509, 475);
+            this.ClientSize = new System.Drawing.Size(590, 490);
             this.Controls.Add(this.lblRestoreDefaults);
             this.Controls.Add(this.lblBack);
             this.Controls.Add(this.lblOK);
@@ -540,6 +547,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.tbRectangleCycles)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.tbRectangleSpeed)).EndInit();
             this.groupBox1.ResumeLayout(false);
+            this.groupBox1.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -587,7 +595,7 @@
         private System.Windows.Forms.TextBox svalLineCycles;
         private System.Windows.Forms.TextBox svalLineThickness;
         private System.Windows.Forms.GroupBox groupBox1;
-        private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.Label panelTitle;
         private System.Windows.Forms.TextBox svalRectangleSpeed;
 
     }

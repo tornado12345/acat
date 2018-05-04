@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="TalkWindowManager.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,49 +20,14 @@
 
 //#define TALKWINDOW_DISPATCHER_THREAD
 
-using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Drawing;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.Audit;
 using ACAT.Lib.Core.PanelManagement;
 using ACAT.Lib.Core.TTSManagement;
 using ACAT.Lib.Core.Utility;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Drawing;
+using System.Windows.Forms;
 
 namespace ACAT.Lib.Core.TalkWindowManagement
 {
@@ -106,11 +71,12 @@ namespace ACAT.Lib.Core.TalkWindowManagement
         private float _fontSize;
 
 #if TALKWINDOW_DISPATCHER_THREAD
-        /// <summary>
-        /// Is inside execution of the creation thread
-        /// </summary>
+    /// <summary>
+    /// Is inside execution of the creation thread
+    /// </summary>
         private volatile bool _inTalkWindowCreationThread;
 #endif
+
         /// <summary>
         /// Is execting the toggle talk window function
         /// </summary>
@@ -137,12 +103,23 @@ namespace ACAT.Lib.Core.TalkWindowManagement
         private bool _zoomModeTalkWindowEmpty;
 
         /// <summary>
+        /// In the process of creating/displaying the talk window
+        /// </summary>
+        private volatile bool _showingTalkWindow;
+
+        /// <summary>
+        /// In the process of closing the talk window
+        /// </summary>
+        private volatile bool _closingTalkWindow;
+
+        /// <summary>
         /// Initializes singleton instance of the manager
         /// </summary>
         private TalkWindowManager()
         {
             _fontSize = CoreGlobals.AppPreferences.TalkWindowFontSize;
             PanelManager.Instance.EvtScannerShow += Instance_EvtScannerShow;
+            AgentManagement.AgentManager.Instance.EvtPreActivateAgent += Instance_EvtPreActivateAgent;
         }
 
         /// <summary>
@@ -204,10 +181,7 @@ namespace ACAT.Lib.Core.TalkWindowManagement
         /// </summary>
         public bool IsTalkWindowVisible
         {
-            get
-            {
-                return (IsTalkWindowActive && _talkWindowForm != null) && Windows.GetVisible(_talkWindowForm);
-            }
+            get { return (IsTalkWindowActive && _talkWindowForm != null) && Windows.GetVisible(_talkWindowForm); }
         }
 
         /// <summary>
@@ -232,10 +206,7 @@ namespace ACAT.Lib.Core.TalkWindowManagement
         /// </summary>
         public Control TalkWindowTextBox
         {
-            get
-            {
-                return (_talkWindow != null) ? _talkWindow.TalkWindowTextBox : null;
-            }
+            get { return (_talkWindow != null) ? _talkWindow.TalkWindowTextBox : null; }
         }
 
         /// <summary>
@@ -265,6 +236,13 @@ namespace ACAT.Lib.Core.TalkWindowManagement
         {
             if ((IsTalkWindowActive || force) && _talkWindow != null)
             {
+                if (_showingTalkWindow)
+                {
+                    return;
+                }
+
+                _closingTalkWindow = true;
+
                 IsPaused = false;
 
                 _fontSize = _talkWindow.FontSize;
@@ -294,6 +272,7 @@ namespace ACAT.Lib.Core.TalkWindowManagement
 
                 _talkWindowForm = null;
                 _talkWindow = null;
+                _closingTalkWindow = false;
 
                 AuditLog.Audit(new AuditEventTalkWindow("close"));
             }
@@ -341,12 +320,11 @@ namespace ACAT.Lib.Core.TalkWindowManagement
             }
             else
             {
-                Log.Debug("ACHTUNG! _TalkWindow is not null!!");
+                Log.Debug("_TalkWindow is not null!!");
             }
 
             return true;
         }
-
 
         /// <summary>
         /// Gets the font size of the Talk window font
@@ -483,7 +461,10 @@ namespace ACAT.Lib.Core.TalkWindowManagement
                 return;
             }
 
-            setTalkWindowPosition(scannerForm);
+            if (Context.AppPanelManager.PanelDisplayMode != DisplayModeTypes.Popup)
+            {
+                setTalkWindowPosition(scannerForm);
+            }
 
             _talkWindowForm.Invoke(new MethodInvoker(() => _talkWindow.OnPositionChanged()));
         }
@@ -494,37 +475,83 @@ namespace ACAT.Lib.Core.TalkWindowManagement
         public void ToggleTalkWindow()
         {
             Log.Debug("_inToggleTalkWindow: " + _inToggleTalkWindow);
+
+            bool visibilityChanged = false;
+
             if (!_inToggleTalkWindow)
             {
                 _inToggleTalkWindow = true;
+
                 if (_talkWindowForm == null)
                 {
                     Log.Debug("calling create and show");
-                    createAndShowTalkWindow();
-                    Log.Debug("after create and show");
+
+                    if (!_closingTalkWindow)
+                    {
+                        _showingTalkWindow = true;
+                        createAndShowTalkWindow();
+                        _showingTalkWindow = false;
+
+                        visibilityChanged = true;
+
+                        Log.Debug("after create and show");
+                    }
                 }
+
                 else if (Windows.GetVisible(_talkWindowForm))
                 {
                     Log.Debug("closing talk window");
                     CloseTalkWindow();
+                    visibilityChanged = true;
                 }
                 else
                 {
-                    IsTalkWindowActive = true;
+                    if (!_closingTalkWindow)
+                    {
+                        _showingTalkWindow = true;
 
-                    showGlass();
+                        IsTalkWindowActive = true;
 
-                    Windows.SetTopMost(_talkWindowForm);
+                        IsPaused = false;
 
-                    _talkWindowForm.Visible = true;
+                        showGlass();
+
+                        Windows.SetTopMost(_talkWindowForm);
+
+                        _talkWindowForm.Visible = true;
+
+                        _showingTalkWindow = false;
+
+                        visibilityChanged = true;
+
+                    }
                 }
 
-                notifyTalkWindowVisibilityChanged();
+                if (visibilityChanged)
+                {
+                    notifyTalkWindowVisibilityChanged();
+                }
 
                 _inToggleTalkWindow = false;
             }
 
             Log.Debug("returning");
+        }
+
+        /// <summary>
+        /// Displays the talk window if it is not already active
+        /// </summary>
+        /// <returns>true on success</returns>
+        public bool ShowTalkWindow()
+        {
+            if (_talkWindowForm == null || !Windows.GetVisible(_talkWindowForm))
+            {
+                ToggleTalkWindow();
+
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -560,7 +587,7 @@ namespace ACAT.Lib.Core.TalkWindowManagement
             if (String.IsNullOrEmpty(text.Trim()))
             {
                 _zoomModeTalkWindowEmpty = true;
-                _talkWindow.TalkWindowText = "This is a sample";
+                _talkWindow.TalkWindowText = R.GetString("TalkWindowTestString");
             }
         }
 
@@ -638,7 +665,8 @@ namespace ACAT.Lib.Core.TalkWindowManagement
                     EvtTalkWindowClosed(this, new EventArgs());
                 }
 
-                EnumWindows.RestoreFocusToTopWindow();
+                //Context.AppPanelManager.CloseCurrentForm();
+                EnumWindows.RestoreFocusToTopWindowOnDesktop();
                 WindowActivityMonitor.GetActiveWindowAsync();
             }
 
@@ -683,7 +711,6 @@ namespace ACAT.Lib.Core.TalkWindowManagement
             {
                 SetTalkWindowPosition(PanelManager.Instance.GetCurrentForm() as Form);
             }
-
 
             var talkWindowAgent = Context.AppAgentMgr.GetAgentByName("TalkWindow Agent");
             Log.IsNull("Talkwindowagent", talkWindowAgent);
@@ -817,6 +844,12 @@ namespace ACAT.Lib.Core.TalkWindowManagement
 
             _talkWindowForm.Location = new Point(talkWindowRect.X, talkWindowRect.Y);
             _talkWindowForm.Width = talkWindowRect.Width;
+
+            if (CoreGlobals.AppPreferences.SnapTalkWindow)
+            {
+                _talkWindowForm.Height = Screen.PrimaryScreen.Bounds.Height;
+                _talkWindowForm.Top = 0;
+            }
         }
 
         /// <summary>
@@ -824,7 +857,10 @@ namespace ACAT.Lib.Core.TalkWindowManagement
         /// </summary>
         private void showGlass()
         {
-            Glass.Enable = CoreGlobals.AppPreferences.EnableGlass;
+            //Glass.Enable = CoreGlobals.AppPreferences.EnableGlass;
+
+            // permanently disable glass
+            Glass.Enable = false;
             Glass.ShowGlass();
         }
 
@@ -833,7 +869,7 @@ namespace ACAT.Lib.Core.TalkWindowManagement
         /// </summary>
         private void hideGlass()
         {
-            Glass.HideGlass();    
+            Glass.HideGlass();
         }
 
         /// <summary>
@@ -881,6 +917,17 @@ namespace ACAT.Lib.Core.TalkWindowManagement
             {
                 TTSManager.Instance.ActiveEngine.Stop();
             }
+        }
+
+        /// <summary>
+        /// Event handler for preactivation of a functional agent. Close
+        /// the talk window
+        /// </summary>
+        /// <param name="sender">event sender</param>
+        /// <param name="e">event args</param>
+        private void Instance_EvtPreActivateAgent(object sender, EventArgs e)
+        {
+            CloseTalkWindow();
         }
 
         /// <summary>

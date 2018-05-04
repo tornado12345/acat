@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="WordpadAgent.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,45 +18,10 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System.Diagnostics.CodeAnalysis;
+using ACAT.Lib.Core.PreferencesManagement;
 using ACAT.Lib.Core.UserManagement;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Extension.AppAgents.Wordpad;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
 
 namespace ACAT.Lib.Core.Extensions.Base.AppAgents.WordPadAgent
 {
@@ -65,15 +30,15 @@ namespace ACAT.Lib.Core.Extensions.Base.AppAgents.WordPadAgent
     /// Base class does all the heavy-lifting.  Override functions
     /// as required customize
     /// </summary>
-    [DescriptorAttribute("36460FD2-FB73-4D69-952D-D640EC58C202", 
-                            "Wordpad Agent", 
-                            "Agent for WordPad")]
+    [DescriptorAttribute("36460FD2-FB73-4D69-952D-D640EC58C202",
+                            "Wordpad Agent",
+                            "Manages interactions with WordPad to edit files")]
     internal class WordpadAgent : WordpadAgentBase
     {
         /// <summary>
         /// Settings for this agent
         /// </summary>
-        internal static WordPadSettings Settings;
+        internal static WordPadAgentSettings Settings;
 
         /// <summary>
         /// Name of the settings file
@@ -85,10 +50,28 @@ namespace ACAT.Lib.Core.Extensions.Base.AppAgents.WordPadAgent
         /// </summary>
         public WordpadAgent()
         {
-            WordPadSettings.PreferencesFilePath = UserManager.GetFullPath(SettingsFileName);
-            Settings = WordPadSettings.Load();
+            WordPadAgentSettings.PreferencesFilePath = UserManager.GetFullPath(SettingsFileName);
+            Settings = WordPadAgentSettings.Load();
 
             autoSwitchScanners = Settings.AutoSwitchScannerEnable;
+        }
+
+        /// <summary>
+        /// Returns the default settings
+        /// </summary>
+        /// <returns>Default settings object</returns>
+        public override IPreferences GetDefaultPreferences()
+        {
+            return PreferencesBase.LoadDefaults<WordPadAgentSettings>();
+        }
+
+        /// <summary>
+        /// Returns the settings for this agent
+        /// </summary>
+        /// <returns>The settings object</returns>
+        public override IPreferences GetPreferences()
+        {
+            return Settings;
         }
     }
 }

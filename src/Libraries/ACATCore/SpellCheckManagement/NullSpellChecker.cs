@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="NullSpellChecker.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,44 +18,10 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Diagnostics.CodeAnalysis;
+using ACAT.Lib.Core.Extensions;
 using ACAT.Lib.Core.Utility;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Globalization;
 
 namespace ACAT.Lib.Core.SpellCheckManagement
 {
@@ -63,10 +29,10 @@ namespace ACAT.Lib.Core.SpellCheckManagement
     /// The null spellchecker basically does nothing.  It is used
     /// where no SpellChecker is currently active/valid.
     /// </summary>
-    [DescriptorAttribute("CCC45241-9BA0-4BD9-AB37-DC2C960772F4", 
-                        "Null Spell Checker", 
+    [DescriptorAttribute("CCC45241-9BA0-4BD9-AB37-DC2C960772F4",
+                        "Null Spell Checker",
                         "No spell checking functionality.")]
-    public class NullSpellChecker : ISpellChecker
+    public class NullSpellChecker : ISpellChecker, IExtension
     {
         /// <summary>
         /// Has this object been disposed
@@ -82,22 +48,6 @@ namespace ACAT.Lib.Core.SpellCheckManagement
         }
 
         /// <summary>
-        /// Gets the settings dialog
-        /// </summary>
-        public ISpellCheckerSettingsDialog SettingsDialog
-        {
-            get { return null; }
-        }
-
-        /// <summary>
-        /// Gets whether this supports a settings dialog
-        /// </summary>
-        public bool SupportsSettingsDialog
-        {
-            get { return false; }
-        }
-
-        /// <summary>
         /// Disposes resources
         /// </summary>
         public void Dispose()
@@ -107,6 +57,25 @@ namespace ACAT.Lib.Core.SpellCheckManagement
             // Prevent finalization code for this object
             // from executing a second time.
             GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Returns the invoker object
+        /// </summary>
+        /// <returns>Invoker object</returns>
+        public ExtensionInvoker GetInvoker()
+        {
+            return null;
+        }
+
+        /// <summary>
+        /// Performs initialization
+        /// </summary>
+        /// <param name="ci">culture info</param>
+        /// <returns>true</returns>
+        public bool Init(CultureInfo ci)
+        {
+            return true;
         }
 
         /// <summary>
@@ -149,14 +118,20 @@ namespace ACAT.Lib.Core.SpellCheckManagement
         }
 
         /// <summary>
-        ///  Save settings into the specified directory
+        /// Saves the settings (no-op)
         /// </summary>
-        /// <param name="configFileDirectory">Location of the config file</param>
-        /// <returns>true on success</returns>
-
+        /// <param name="configFileDirectory">file</param>
+        /// <returns></returns>
         public bool SaveSettings(String configFileDirectory)
         {
             return true;
+        }
+
+        /// <summary>
+        /// Uninitializes
+        /// </summary>
+        public void Uninit()
+        {
         }
 
         /// <summary>

@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="AboutBoxForm.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,53 +18,17 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Windows.Forms;
 using ACAT.Lib.Core.Extensions;
 using ACAT.Lib.Core.PanelManagement;
 using ACAT.Lib.Core.UserManagement;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Core.WidgetManagement;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
 
 namespace ACAT.Extensions.Default.UI.Dialogs
 {
@@ -77,11 +41,6 @@ namespace ACAT.Extensions.Default.UI.Dialogs
                         "About box")]
     public partial class AboutBoxForm : Form, IDialogPanel, IExtension
     {
-        /// <summary>
-        /// The DialogCommon object
-        /// </summary>
-        private readonly DialogCommon _dialogCommon;
-
         /// <summary>
         /// Provdes access to methods/properties in this class
         /// </summary>
@@ -98,9 +57,19 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         private List<String> _attributions;
 
         /// <summary>
+        /// Company information
+        /// </summary>
+        private String _companyInfo;
+
+        /// <summary>
         /// Copyright info
         /// </summary>
         private String _copyRightInfo;
+
+        /// <summary>
+        /// The DialogCommon object
+        /// </summary>
+        private DialogCommon _dialogCommon;
 
         /// <summary>
         /// Full path to the application logo image
@@ -122,12 +91,6 @@ namespace ACAT.Extensions.Default.UI.Dialogs
             _attributions = new List<string>();
 
             _invoker = new ExtensionInvoker(this);
-
-            _dialogCommon = new DialogCommon(this);
-            if (!_dialogCommon.Initialize())
-            {
-                Log.Debug("Initialization error");
-            }
 
             Load += Form_Load;
             FormClosing += Form_Closing;
@@ -165,6 +128,10 @@ namespace ACAT.Extensions.Default.UI.Dialogs
                 _attributions = value.ToList();
 
                 var sb = new StringBuilder();
+
+                sb.AppendLine("Click on the \"Licenses\" button for detailed licensing information");
+                sb.AppendLine();
+
                 foreach (var str in _attributions)
                 {
                     sb.AppendLine(str);
@@ -172,6 +139,22 @@ namespace ACAT.Extensions.Default.UI.Dialogs
                 }
 
                 Windows.SetText(textBoxOtherInfo, sb.ToString());
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the company information
+        /// </summary>
+        public String CompanyInfo
+        {
+            get
+            {
+                return _companyInfo;
+            }
+            set
+            {
+                _companyInfo = value;
+                Windows.SetText(labelCompanyInfo, value);
             }
         }
 
@@ -200,6 +183,9 @@ namespace ACAT.Extensions.Default.UI.Dialogs
             get { return DescriptorAttribute.GetDescriptor(GetType()); }
         }
 
+        /// <summary>
+        /// Gets or sets the logo string
+        /// </summary>
         public String Logo
         {
             get
@@ -216,11 +202,16 @@ namespace ACAT.Extensions.Default.UI.Dialogs
                     var bitmap = ImageUtils.ImageOpacity(image, 1.0F, new Rectangle(0, 0, pictureBoxLogo.Width, pictureBoxLogo.Height));
                     pictureBoxLogo.Image = bitmap;
                 }
-                catch (Exception)
+                catch
                 {
                 }
             }
         }
+
+        /// <summary>
+        /// Gets the PanelCommon object
+        /// </summary>
+        public IPanelCommon PanelCommon { get { return _dialogCommon; } }
 
         /// <summary>
         /// Gets synchronization object
@@ -262,6 +253,17 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         public ExtensionInvoker GetInvoker()
         {
             return _invoker;
+        }
+
+        /// <summary>
+        /// Intitializes the class
+        /// </summary>
+        /// <param name="startupArg">startup param</param>
+        /// <returns>true on success</returns>
+        public bool Initialize(StartupArg startupArg)
+        {
+            _dialogCommon = new DialogCommon(this);
+            return _dialogCommon.Initialize(startupArg);
         }
 
         /// <summary>
@@ -335,6 +337,23 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         }
 
         /// <summary>
+        /// Event handler for displaying license file
+        /// </summary>
+        /// <param name="sender">event sender</param>
+        /// <param name="e">event args</param>
+        private void buttonLicenses_Click(object sender, EventArgs e)
+        {
+            Hide();
+
+            var showLicenseForm = new ShowLicenseForm();
+            showLicenseForm.ShowDialog();
+
+            Show();
+
+            Activate();
+        }
+
+        /// <summary>
         /// Form is closing. Release resources
         /// </summary>
         /// <param name="sender">event sender</param>
@@ -354,7 +373,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
             updateUserProfileInfo();
             _dialogCommon.OnLoad();
 
-            _dialogCommon.GetAnimationManager().Start(_dialogCommon.GetRootWidget());
+            PanelCommon.AnimationManager.Start(PanelCommon.RootWidget);
         }
 
         /// <summary>

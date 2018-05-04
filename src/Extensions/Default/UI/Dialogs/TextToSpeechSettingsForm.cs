@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="TextToSpeechSettingsForm.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,52 +18,17 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Security.Permissions;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.PanelManagement;
 using ACAT.Lib.Core.TTSManagement;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Core.WidgetManagement;
 using ACAT.Lib.Core.Widgets;
 using ACAT.Lib.Extension;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Collections.Generic;
+using System.Security.Permissions;
+using System.Windows.Forms;
 
 namespace ACAT.Extensions.Default.UI.Dialogs
 {
@@ -79,7 +44,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// <summary>
         /// The DialogCommon object
         /// </summary>
-        private readonly DialogCommon _dialogCommon;
+        private DialogCommon _dialogCommon;
 
         /// <summary>
         /// Initial value of the pitch setting
@@ -115,15 +80,6 @@ namespace ACAT.Extensions.Default.UI.Dialogs
 
             saveInitalValues();
 
-            _dialogCommon = new DialogCommon(this);
-
-            if (!_dialogCommon.Initialize())
-            {
-                Log.Debug("Initialization error");
-            }
-
-            populateUI();
-
             tbPitch.TextChanged += tbPitch_TextChanged;
             tbRate.TextChanged += tbRate_TextChanged;
             tbVolume.TextChanged += tbVolume_TextChanged;
@@ -138,6 +94,11 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         {
             get { return DescriptorAttribute.GetDescriptor(GetType()); }
         }
+
+        /// <summary>
+        /// Gets the PanelCommon object
+        /// </summary>
+        public IPanelCommon PanelCommon { get { return _dialogCommon; } }
 
         /// <summary>
         /// Gets the synchronization object
@@ -156,6 +117,25 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         }
 
         /// <summary>
+        /// Intitializes the class
+        /// </summary>
+        /// <param name="startupArg">startup param</param>
+        /// <returns>true on success</returns>
+        public bool Initialize(StartupArg startupArg)
+        {
+            _dialogCommon = new DialogCommon(this);
+
+            if (!_dialogCommon.Initialize(startupArg))
+            {
+                return false;
+            }
+
+            populateUI();
+
+            return true;
+        }
+
+        /// <summary>
         /// Triggered when a widget is actuated
         /// </summary>
         /// <param name="widget">Which one triggered?</param>
@@ -170,7 +150,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
                 return;
             }
 
-            Invoke(new MethodInvoker(delegate()
+            Invoke(new MethodInvoker(delegate
             {
                 switch (value)
                 {
@@ -251,21 +231,21 @@ namespace ACAT.Extensions.Default.UI.Dialogs
             if (!int.TryParse(Windows.GetText(tbVolume), out value) ||
                 !_initialVolume.IsValid(value))
             {
-                showError("Invalid Volume setting");
+                showError(R.GetString("InvalidVolumeSetting"));
                 return false;
             }
 
             if (!int.TryParse(Windows.GetText(tbRate), out value) ||
                 !_initialRate.IsValid(value))
             {
-                showError("Invalid Rate setting");
+                showError(R.GetString("InvalidRateSetting"));
                 return false;
             }
 
             if (!int.TryParse(Windows.GetText(tbPitch), out value) ||
                 !_initialPitch.IsValid(value))
             {
-                showError("Invalid Rate setting");
+                showError(R.GetString("InvalidPitchSetting"));
                 return false;
             }
 
@@ -277,13 +257,24 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// </summary>
         private void loadDefaultSettings()
         {
-            if (DialogUtils.Confirm(this, "Restore default settings?"))
+            if (DialogUtils.Confirm(this, R.GetString("RestoreDefaultSettings")))
             {
                 // get entire default file and just set those settings that belong to this preferences form
                 Context.AppTTSManager.ActiveEngine.RestoreDefaults();
                 populateUI();
                 _isDirty = true;
             }
+        }
+
+        /// <summary>
+        /// Populate form controls text from Language resource
+        /// </summary>
+        private void populateFormText()
+        {
+            panelTitle.Text = R.GetString(panelTitle.Text);
+            lblVolume.Text = R.GetString(lblVolume.Text);
+            lblRate.Text = R.GetString(lblRate.Text);
+            lblPitch.Text = R.GetString(lblPitch.Text);
         }
 
         /// <summary>
@@ -306,7 +297,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
 
             if (_isDirty)
             {
-                if (!DialogUtils.Confirm(this, "Changes not saved. Quit?"))
+                if (!DialogUtils.Confirm(this, R.GetString("ChangesNotSavedQuit")))
                 {
                     quit = false;
                 }
@@ -350,7 +341,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
                 return;
             }
 
-            if (DialogUtils.Confirm(this, "Save settings?"))
+            if (DialogUtils.Confirm(this, R.GetString("SaveSettings")))
             {
                 updateActiveEngineSettingsFromUI();
                 Context.AppTTSManager.ActiveEngine.Save();
@@ -370,7 +361,9 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// <param name="error">error string</param>
         private void showError(String error)
         {
-            DialogUtils.ShowTimedDialog(this, "Error", error);
+            _windowActiveWatchdog.Pause();
+            DialogUtils.ShowTimedDialog(this, R.GetString("Error"), error);
+            _windowActiveWatchdog.Resume();
         }
 
         /// <summary>
@@ -380,19 +373,19 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         private void subscribeToEvents()
         {
             List<Widget> widgetList = new List<Widget>();
-            _dialogCommon.GetRootWidget().Finder.FindAllButtons(widgetList);
+            PanelCommon.RootWidget.Finder.FindAllButtons(widgetList);
 
             foreach (Widget widget in widgetList)
             {
-                widget.EvtValueChanged += new WidgetEventDelegate(widget_EvtValueChanged);
+                widget.EvtValueChanged += widget_EvtValueChanged;
             }
 
             widgetList.Clear();
-            _dialogCommon.GetRootWidget().Finder.FindAllChildren(typeof(SliderWidget), widgetList);
+            PanelCommon.RootWidget.Finder.FindAllChildren(typeof(SliderWidget), widgetList);
 
             foreach (Widget widget in widgetList)
             {
-                widget.EvtValueChanged += new WidgetEventDelegate(widget_EvtValueChanged);
+                widget.EvtValueChanged += widget_EvtValueChanged;
             }
         }
 
@@ -427,7 +420,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         }
 
         /// <summary>
-        /// Test the current settings by sending a string
+        /// Tests the current settings by sending a string
         /// to the speech engine
         /// </summary>
         private void testSettings()
@@ -442,7 +435,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
                 Context.AppTTSManager.ActiveEngine.SetRate(rate);
                 Context.AppTTSManager.ActiveEngine.SetPitch(pitch);
 
-                Context.AppTTSManager.ActiveEngine.Speak(Common.AppPreferences.UserVoiceTestString);
+                Context.AppTTSManager.ActiveEngine.Speak(R.GetString("TextToSpeechTestString"));
             }
         }
 
@@ -461,15 +454,17 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// </summary>
         private void TextToSpeechSettingsForm_Load(object sender, EventArgs e)
         {
-            lblVolumeText.Text = _initialVolume.RangeMin + " to " + _initialVolume.RangeMax;
-            lblRateText.Text = _initialRate.RangeMin + " to " + _initialRate.RangeMax;
-            lblPitchText.Text = _initialPitch.RangeMin + " to " + _initialPitch.RangeMax;
+            populateFormText();
+
+            lblVolumeText.Text = String.Format(R.GetString("RangeFromTo"), _initialVolume.RangeMin, _initialVolume.RangeMax);
+            lblRateText.Text = String.Format(R.GetString("RangeFromTo"), _initialRate.RangeMin, _initialRate.RangeMax);
+            lblPitchText.Text = String.Format(R.GetString("RangeFromTo"), _initialPitch.RangeMin, _initialPitch.RangeMax);
             lblTTSEngineName.Text = Context.AppTTSManager.ActiveEngine.Descriptor.Name;
 
             _windowActiveWatchdog = new WindowActiveWatchdog(this);
             _dialogCommon.OnLoad();
             subscribeToEvents();
-            _dialogCommon.GetAnimationManager().Start(_dialogCommon.GetRootWidget());
+            PanelCommon.AnimationManager.Start(PanelCommon.RootWidget);
         }
 
         /// <summary>

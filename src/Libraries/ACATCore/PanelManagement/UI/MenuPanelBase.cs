@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="MenuPanelBase.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,51 +18,15 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Security.Permissions;
-using System.Windows.Forms;
 using ACAT.Lib.Core.AgentManagement;
 using ACAT.Lib.Core.PanelManagement.CommandDispatcher;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Core.WidgetManagement;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Permissions;
+using System.Windows.Forms;
 
 namespace ACAT.Lib.Core.PanelManagement
 {
@@ -102,6 +66,15 @@ namespace ACAT.Lib.Core.PanelManagement
         /// The command dispatcher to execute commands
         /// </summary>
         private readonly RunCommandDispatcher _dispatcher;
+
+        /// <summary>
+        /// Initializes a new instance of the class
+        /// </summary>
+        public MenuPanelBase()
+        {
+            InitializeComponent();
+            _dispatcher = new RunCommandDispatcher(this);
+        }
 
         /// <summary>
         /// Initializes a new instance of the class.
@@ -149,6 +122,11 @@ namespace ACAT.Lib.Core.PanelManagement
         public String PanelClass { get; protected set; }
 
         /// <summary>
+        /// Gets the PanelCommon object
+        /// </summary>
+        public IPanelCommon PanelCommon { get { return scannerCommon; } }
+
+        /// <summary>
         /// Gets the scannerCommon object
         /// </summary>
         public ScannerCommon ScannerCommon
@@ -173,7 +151,7 @@ namespace ACAT.Lib.Core.PanelManagement
         }
 
         /// <summary>
-        /// Disable title etc
+        /// Set the form style
         /// </summary>
         protected override CreateParams CreateParams
         {
@@ -197,7 +175,7 @@ namespace ACAT.Lib.Core.PanelManagement
         /// </summary>
         /// <param name="arg">argument</param>
         /// <returns>true on success</returns>
-        public bool CheckWidgetEnabled(CheckEnabledArgs arg)
+        public bool CheckCommandEnabled(CommandEnabledArg arg)
         {
             return false;
         }
@@ -221,7 +199,7 @@ namespace ACAT.Lib.Core.PanelManagement
                 return false;
             }
 
-            rootWidget = scannerCommon.GetRootWidget();
+            rootWidget = PanelCommon.RootWidget;
 
             onInitialize();
 
@@ -243,10 +221,6 @@ namespace ACAT.Lib.Core.PanelManagement
         /// </summary>
         public virtual void OnPause()
         {
-            scannerCommon.GetAnimationManager().Pause();
-
-            scannerCommon.HideScanner();
-
             scannerCommon.OnPause();
         }
 
@@ -266,10 +240,6 @@ namespace ACAT.Lib.Core.PanelManagement
         /// </summary>
         public virtual void OnResume()
         {
-            scannerCommon.GetAnimationManager().Resume();
-
-            scannerCommon.ShowScanner();
-
             scannerCommon.OnResume();
         }
 
@@ -303,7 +273,7 @@ namespace ACAT.Lib.Core.PanelManagement
 
             if (scannerCommon != null)
             {
-                Widget widget = scannerCommon.GetRootWidget().Finder.FindChild("ContextMenuTitle");
+                Widget widget = PanelCommon.RootWidget.Finder.FindChild("ContextMenuTitle");
                 if (widget != null)
                 {
                     widget.SetText(title);
@@ -389,7 +359,7 @@ namespace ACAT.Lib.Core.PanelManagement
 
             SetTitle(Title);
 
-            scannerCommon.GetAnimationManager().Start(rootWidget);
+            PanelCommon.AnimationManager.Start(rootWidget);
 
             OnLoad();
         }

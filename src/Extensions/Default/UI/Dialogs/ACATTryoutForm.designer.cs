@@ -36,7 +36,6 @@
             this.buttonSteppingTimeIncrease = new System.Windows.Forms.ToolStripButton();
             this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
             this.buttonSteppingTimeDecrease = new System.Windows.Forms.ToolStripButton();
-            this.buttonSave = new System.Windows.Forms.ToolStripButton();
             this.labelTryWord = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
             this.textBoxEntry = new System.Windows.Forms.TextBox();
@@ -47,6 +46,8 @@
             this.B3 = new System.Windows.Forms.Button();
             this.B2 = new System.Windows.Forms.Button();
             this.B1 = new System.Windows.Forms.Button();
+            this.buttonSave = new System.Windows.Forms.ToolStripButton();
+            this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
             this.panel1.SuspendLayout();
             this.toolStrip1.SuspendLayout();
             this.SuspendLayout();
@@ -81,6 +82,7 @@
             this.buttonSteppingTimeIncrease,
             this.toolStripSeparator1,
             this.buttonSteppingTimeDecrease,
+            this.toolStripSeparator2,
             this.buttonSave});
             this.toolStrip1.Location = new System.Drawing.Point(0, 0);
             this.toolStrip1.Name = "toolStrip1";
@@ -110,7 +112,7 @@
             this.buttonSteppingTimeIncrease.Image = ((System.Drawing.Image)(resources.GetObject("buttonSteppingTimeIncrease.Image")));
             this.buttonSteppingTimeIncrease.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.buttonSteppingTimeIncrease.Name = "buttonSteppingTimeIncrease";
-            this.buttonSteppingTimeIncrease.Size = new System.Drawing.Size(82, 36);
+            this.buttonSteppingTimeIncrease.Size = new System.Drawing.Size(81, 36);
             this.buttonSteppingTimeIncrease.Text = "Faster";
             this.buttonSteppingTimeIncrease.ToolTipText = "Increase Scan Speed";
             this.buttonSteppingTimeIncrease.Click += new System.EventHandler(this.buttonSteppingTimeIncrease_Click);
@@ -133,48 +135,35 @@
             this.buttonSteppingTimeDecrease.ToolTipText = "Decrease Scan Speed";
             this.buttonSteppingTimeDecrease.Click += new System.EventHandler(this.buttonSteppingTimeDecrease_Click);
             // 
-            // buttonSave
-            // 
-            this.buttonSave.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
-            this.buttonSave.BackColor = System.Drawing.Color.Gainsboro;
-            this.buttonSave.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
-            this.buttonSave.Font = new System.Drawing.Font("Segoe UI", 18F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.buttonSave.Image = ((System.Drawing.Image)(resources.GetObject("buttonSave.Image")));
-            this.buttonSave.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this.buttonSave.Name = "buttonSave";
-            this.buttonSave.Size = new System.Drawing.Size(69, 36);
-            this.buttonSave.Text = "Save";
-            this.buttonSave.ToolTipText = "Save Scan Speed";
-            this.buttonSave.Click += new System.EventHandler(this.buttonSave_Click);
-            // 
             // labelTryWord
             // 
-            this.labelTryWord.Font = new System.Drawing.Font("Arial", 63.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.labelTryWord.Font = new System.Drawing.Font("Arial", 57.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.labelTryWord.ForeColor = System.Drawing.Color.Red;
-            this.labelTryWord.Location = new System.Drawing.Point(745, 47);
+            this.labelTryWord.Location = new System.Drawing.Point(830, 42);
             this.labelTryWord.Name = "labelTryWord";
-            this.labelTryWord.Size = new System.Drawing.Size(343, 101);
+            this.labelTryWord.Size = new System.Drawing.Size(266, 101);
             this.labelTryWord.TabIndex = 136;
             this.labelTryWord.Text = "Test";
+            this.labelTryWord.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // label1
             // 
-            this.label1.AutoSize = true;
-            this.label1.Font = new System.Drawing.Font("Arial", 33.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label1.Location = new System.Drawing.Point(521, 71);
+            this.label1.Font = new System.Drawing.Font("Arial", 30F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label1.Location = new System.Drawing.Point(312, 71);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(245, 53);
+            this.label1.Size = new System.Drawing.Size(512, 53);
             this.label1.TabIndex = 135;
-            this.label1.Text = "Type this: ";
+            this.label1.Text = "Type this word: ";
+            this.label1.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
             // textBoxEntry
             // 
             this.textBoxEntry.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.textBoxEntry.Font = new System.Drawing.Font("Arial", 36F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.textBoxEntry.Location = new System.Drawing.Point(42, 66);
+            this.textBoxEntry.Location = new System.Drawing.Point(39, 66);
             this.textBoxEntry.Name = "textBoxEntry";
             this.textBoxEntry.ReadOnly = true;
-            this.textBoxEntry.Size = new System.Drawing.Size(456, 63);
+            this.textBoxEntry.Size = new System.Drawing.Size(267, 63);
             this.textBoxEntry.TabIndex = 134;
             // 
             // buttonExit
@@ -248,11 +237,29 @@
             this.B1.Text = "a";
             this.B1.UseVisualStyleBackColor = true;
             // 
+            // buttonSave
+            // 
+            this.buttonSave.BackColor = System.Drawing.Color.Gainsboro;
+            this.buttonSave.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.buttonSave.Font = new System.Drawing.Font("Segoe UI", 18F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.buttonSave.Image = ((System.Drawing.Image)(resources.GetObject("buttonSave.Image")));
+            this.buttonSave.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.buttonSave.Name = "buttonSave";
+            this.buttonSave.Size = new System.Drawing.Size(69, 36);
+            this.buttonSave.Text = "Save";
+            this.buttonSave.ToolTipText = "Save Scan Speed";
+            this.buttonSave.Click += new System.EventHandler(this.buttonSave_Click);
+            // 
+            // toolStripSeparator2
+            // 
+            this.toolStripSeparator2.Name = "toolStripSeparator2";
+            this.toolStripSeparator2.Size = new System.Drawing.Size(6, 39);
+            // 
             // ACATTryoutForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.BackColor = System.Drawing.Color.White;
+            this.BackColor = System.Drawing.Color.Gainsboro;
             this.ClientSize = new System.Drawing.Size(1117, 421);
             this.Controls.Add(this.panel1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
@@ -289,9 +296,8 @@
         private System.Windows.Forms.ToolStripButton buttonSteppingTimeIncrease;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
         private System.Windows.Forms.ToolStripButton buttonSteppingTimeDecrease;
+        private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
         private System.Windows.Forms.ToolStripButton buttonSave;
-
-
     }
 }
 

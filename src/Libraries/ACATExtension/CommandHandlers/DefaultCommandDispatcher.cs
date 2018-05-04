@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="DefaultCommandDispatcher.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,44 +18,8 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System.Diagnostics.CodeAnalysis;
 using ACAT.Lib.Core.PanelManagement;
 using ACAT.Lib.Core.PanelManagement.CommandDispatcher;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
 
 namespace ACAT.Lib.Extension.CommandHandlers
 {
@@ -80,17 +44,20 @@ namespace ACAT.Lib.Extension.CommandHandlers
         /// </summary>
         private void init()
         {
-            Commands.Add(new ShowMainMenuHandler("CmdMainMenu"));
-            Commands.Add(new ShowSettingsMenuHandler("CmdSettingsMenu"));
-            Commands.Add(new ShowToolsMenuHandler("CmdToolsMenu"));
+            Commands.Add(new ShowMenusHandler("CmdMainMenu"));
+            Commands.Add(new ShowMenusHandler("CmdSettingsMenu"));
+            Commands.Add(new ShowMenusHandler("CmdToolsMenu"));
+
             Commands.Add(new SwitchWindowsHandler("CmdSwitchWindows"));
-            Commands.Add(new FileBrowserHandler("CmdFileBrowser"));
+            Commands.Add(new FileBrowserHandler("CmdFileBrowserFileOpen"));
+            Commands.Add(new FileBrowserHandler("CmdFileBrowserFileDelete"));
             Commands.Add(new SwitchAppsHandler("CmdSwitchApps"));
-            Commands.Add(new ShowScreenLockHandler("CmdMuteScreen"));
-            Commands.Add(new ShowNewFileDialogHandler("CmdNewFileAgent"));
+            Commands.Add(new ShowScreenLockHandler("CmdLockScreen"));
+            Commands.Add(new ShowNewFileDialogHandler("CmdCreateFile"));
             Commands.Add(new LaunchAppHandler("CmdLaunchApp"));
             Commands.Add(new ShowAbbreviationsHandler("CmdShowAbbreviationSettings"));
             Commands.Add(new ShowPhraseSpeakHandler("CmdPhraseSpeak"));
+            Commands.Add(new ShowPhraseSpeakHandler("CmdShowEditPhrasesSettings"));
             Commands.Add(new LectureManagerHandler("CmdLectureManager"));
             Commands.Add(new ContextMenuHandler("CmdContextMenu"));
 
@@ -101,14 +68,14 @@ namespace ACAT.Lib.Extension.CommandHandlers
             Commands.Add(new AppWindowManagementHandler("CmdMaxRestoreWindow"));
             Commands.Add(new AppWindowManagementHandler("CmdMaximizeWindow"));
             Commands.Add(new AppWindowManagementHandler("CmdRestoreWindow"));
-            Commands.Add(new AppWindowManagementHandler("CmdThreeFourthMaximizeWindow"));
-            Commands.Add(new AppWindowManagementHandler("CmdParitalMaximizeWindow"));
-            Commands.Add(new AppWindowManagementHandler("CmdMaximizePartialMaximizeToggle"));
-            Commands.Add(new AppWindowManagementHandler("CmdMaximizeThreeFourthToggle"));
+            Commands.Add(new AppWindowManagementHandler("CmdSnapWindow"));
+            Commands.Add(new AppWindowManagementHandler("CmdSnapWindowToggle"));
 
+            Commands.Add(new TalkWindowHandler("CmdTalkWindowShow"));
             Commands.Add(new TalkWindowHandler("CmdTalkWindowToggle"));
             Commands.Add(new TalkWindowHandler("CmdTalkWindowClear"));
             Commands.Add(new TalkWindowHandler("CmdTalkWindowClose"));
+            Commands.Add(new TalkWindowHandler("CmdTalkApp"));
 
             Commands.Add(new FunctionKeyHandler("F1"));
             Commands.Add(new FunctionKeyHandler("F2"));
@@ -140,6 +107,7 @@ namespace ACAT.Lib.Extension.CommandHandlers
             Commands.Add(new DocumentEditingHandler("CmdCut"));
             Commands.Add(new DocumentEditingHandler("CmdCopy"));
             Commands.Add(new DocumentEditingHandler("CmdPaste"));
+            Commands.Add(new DocumentEditingHandler("CmdUndoLastEditChange"));
 
             Commands.Add(new NavigationHandler("CmdPrevChar"));
             Commands.Add(new NavigationHandler("CmdNextChar"));
@@ -188,15 +156,13 @@ namespace ACAT.Lib.Extension.CommandHandlers
             Commands.Add(new MouseHandler("CmdMoveCursorS"));
             Commands.Add(new MouseHandler("CmdMoveCursorSE"));
 
-            Commands.Add(new GoBackHandler("CmdGoBack"));
-
             Commands.Add(new ShowDialogsHandler("CmdShowGeneralSettings"));
             Commands.Add(new ShowDialogsHandler("CmdShowScanSettings"));
             Commands.Add(new ShowDialogsHandler("CmdShowWordPredictionSettings"));
             Commands.Add(new ShowDialogsHandler("CmdShowMouseGridSettings"));
             Commands.Add(new ShowDialogsHandler("CmdShowVoiceSettings"));
-            Commands.Add(new ShowDialogsHandler("CmdShowMuteScreenSettings"));
-            Commands.Add(new ShowDialogsHandler("CmdShowDesignSettings"));
+            Commands.Add(new ShowDialogsHandler("CmdShowScreenLockSettings"));
+            Commands.Add(new ShowDialogsHandler("CmdResizeRepositionScanner"));
             Commands.Add(new ShowDialogsHandler("CmdShowAboutBox"));
 
             Commands.Add(new DocumentEditingHandler("CmdUndo"));
@@ -208,8 +174,12 @@ namespace ACAT.Lib.Extension.CommandHandlers
             Commands.Add(new DocumentEditingHandler("CmdDeleteNextChar"));
             Commands.Add(new DocumentEditingHandler("CmdDeletePrevWord"));
 
-            Commands.Add(new ExitAppHandler("CmdExitAppWithConfirm"));
-            Commands.Add(new ExitAppHandler("CmdExitApp"));
+            Commands.Add(new GoBackHandler("CmdGoBack"));
+
+            Commands.Add(new MiscCommandHandler("CmdSwitchLanguage"));
+            Commands.Add(new MiscCommandHandler("CmdRestartScanning"));
+            Commands.Add(new MiscCommandHandler("CmdExitAppWithConfirm"));
+            Commands.Add(new MiscCommandHandler("CmdExitApp"));
         }
     }
 }

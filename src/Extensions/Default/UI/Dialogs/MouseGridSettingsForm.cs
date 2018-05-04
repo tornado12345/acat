@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="MouseGridSettingsForm.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,51 +18,16 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Security.Permissions;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.PanelManagement;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Core.WidgetManagement;
 using ACAT.Lib.Core.Widgets;
 using ACAT.Lib.Extension;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Collections.Generic;
+using System.Security.Permissions;
+using System.Windows.Forms;
 
 namespace ACAT.Extensions.Default.UI.Dialogs
 {
@@ -71,7 +36,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
     /// includes the speed of the grid, the speed
     /// of mouse movement, the number of cycles
     /// </summary>
-    [DescriptorAttribute("71049A94-0435-4739-AE2C-77E2BD3CB0F0", 
+    [DescriptorAttribute("71049A94-0435-4739-AE2C-77E2BD3CB0F0",
                         "MouseGridSettingsForm",
                         "Mouse Grid Settings Dialog")]
     public partial class MouseGridSettingsForm : Form, IDialogPanel
@@ -79,7 +44,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// <summary>
         /// The DialogCommon object
         /// </summary>
-        private readonly DialogCommon _dialogCommon;
+        private DialogCommon _dialogCommon;
 
         /// <summary>
         /// Were any of the settings changed?
@@ -93,15 +58,6 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         {
             InitializeComponent();
 
-            _dialogCommon = new DialogCommon(this);
-
-            if (!_dialogCommon.Initialize())
-            {
-                Log.Debug("Initialization error");
-            }
-
-            initWidgetSettings(Common.AppPreferences);
-
             Load += MouseGridSettingsForm_Load;
             FormClosing += MouseGridSettingsForm_FormClosing;
         }
@@ -113,6 +69,11 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         {
             get { return DescriptorAttribute.GetDescriptor(GetType()); }
         }
+
+        /// <summary>
+        /// Gets the PanelCommon object
+        /// </summary>
+        public IPanelCommon PanelCommon { get { return _dialogCommon; } }
 
         /// <summary>
         /// Gets the synch object for the scanner
@@ -131,6 +92,24 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         }
 
         /// <summary>
+        /// Intitializes the class
+        /// </summary>
+        /// <param name="startupArg">startup param</param>
+        /// <returns>true on success</returns>
+        public bool Initialize(StartupArg startupArg)
+        {
+            _dialogCommon = new DialogCommon(this);
+            bool retVal = _dialogCommon.Initialize(startupArg);
+
+            if (retVal)
+            {
+                initWidgetSettings(Common.AppPreferences);
+            }
+
+            return retVal;
+        }
+
+        /// <summary>
         /// Invoked when a widget is actuated
         /// </summary>
         /// <param name="widget">Which one triggered?</param>
@@ -145,7 +124,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
                 return;
             }
 
-            Invoke(new MethodInvoker(delegate()
+            Invoke(new MethodInvoker(delegate
             {
                 switch (value)
                 {
@@ -224,7 +203,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// <returns>ACATPreferences object</returns>
         private ACATPreferences getSettingsFromUI()
         {
-            var rootWidget = _dialogCommon.GetRootWidget();
+            var rootWidget = PanelCommon.RootWidget;
             var prefs = ACATPreferences.Load();
 
             prefs.MouseGridRectangleSpeed = Common.AppPreferences.MouseGridRectangleSpeed = (rootWidget.Finder.FindChild(tbRectangleSpeed.Name) as SliderWidget).GetState(SliderWidget.SliderUnitsOnes);
@@ -245,7 +224,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// <param name="prefs">ACAT settings object</param>
         private void initWidgetSettings(ACATPreferences prefs)
         {
-            var rootWidget = _dialogCommon.GetRootWidget();
+            var rootWidget = PanelCommon.RootWidget;
 
             (rootWidget.Finder.FindChild(tbRectangleSpeed.Name) as SliderWidget).SetState(prefs.MouseGridRectangleSpeed, SliderWidget.SliderUnitsOnes);
             (rootWidget.Finder.FindChild(tbRectangleCycles.Name) as SliderWidget).SetState(prefs.MouseGridRectangleCycles, SliderWidget.SliderUnitsOnes);
@@ -261,7 +240,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// </summary>
         private void loadDefaultSettings()
         {
-            if (DialogUtils.Confirm(this, "Restore default settings?"))
+            if (DialogUtils.Confirm(this, R.GetString("RestoreDefaultSettings")))
             {
                 initWidgetSettings(ACATPreferences.LoadDefaultSettings());
                 _isDirty = true;
@@ -281,11 +260,22 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// </summary>
         private void MouseGridSettingsForm_Load(object sender, EventArgs e)
         {
+            populateFormText();
+
             _dialogCommon.OnLoad();
 
             subscribeToEvents();
 
-            _dialogCommon.GetAnimationManager().Start(_dialogCommon.GetRootWidget());
+            PanelCommon.AnimationManager.Start(PanelCommon.RootWidget);
+        }
+
+        /// <summary>
+        /// Populate form controls text from Language resource
+        /// </summary>
+        private void populateFormText()
+        {
+            panelTitle.Text = R.GetString(panelTitle.Text);
+            lblEnableVerticalRectScan.Text = R.GetString(lblEnableVerticalRectScan.Text);
         }
 
         /// <summary>
@@ -297,7 +287,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
 
             if (_isDirty)
             {
-                if (!DialogUtils.Confirm(this, "Changes not saved. Quit?"))
+                if (!DialogUtils.Confirm(this, R.GetString("ChangesNotSavedQuit")))
                 {
                     quit = false;
                 }
@@ -314,7 +304,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// </summary>
         private void saveSettingsAndQuit()
         {
-            if (_isDirty && DialogUtils.Confirm(this, "Save settings?"))
+            if (_isDirty && DialogUtils.Confirm(this, R.GetString("SaveSettings")))
             {
                 getSettingsFromUI().Save();
 
@@ -332,7 +322,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         private void subscribeToEvents()
         {
             var widgetList = new List<Widget>();
-            _dialogCommon.GetRootWidget().Finder.FindAllButtons(widgetList);
+            PanelCommon.RootWidget.Finder.FindAllButtons(widgetList);
 
             foreach (var widget in widgetList)
             {
@@ -340,7 +330,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
             }
 
             widgetList.Clear();
-            _dialogCommon.GetRootWidget().Finder.FindAllChildren(typeof(SliderWidget), widgetList);
+            PanelCommon.RootWidget.Finder.FindAllChildren(typeof(SliderWidget), widgetList);
 
             foreach (var widget in widgetList)
             {

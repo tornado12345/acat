@@ -43,14 +43,14 @@ namespace ACAT.Extensions.Default.UI.Dialogs
             this.lblMaxDigit = new System.Windows.Forms.Label();
             this.tbPINCode = new System.Windows.Forms.TextBox();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.label1 = new System.Windows.Forms.Label();
+            this.panelTitle = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.tbMaxDigit)).BeginInit();
             this.groupBox1.SuspendLayout();
             this.SuspendLayout();
             // 
             // lblCancel
             // 
-            this.lblCancel.Location = new System.Drawing.Point(215, 191);
+            this.lblCancel.Location = new System.Drawing.Point(234, 191);
             this.lblCancel.Name = "lblCancel";
             this.lblCancel.Size = new System.Drawing.Size(111, 47);
             this.lblCancel.TabIndex = 139;
@@ -60,7 +60,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
             // 
             // lblOK
             // 
-            this.lblOK.Location = new System.Drawing.Point(71, 191);
+            this.lblOK.Location = new System.Drawing.Point(90, 191);
             this.lblOK.Name = "lblOK";
             this.lblOK.Size = new System.Drawing.Size(111, 47);
             this.lblOK.TabIndex = 138;
@@ -91,7 +91,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
             // lblPINCode
             // 
             this.lblPINCode.Font = new System.Drawing.Font("Arial", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lblPINCode.Location = new System.Drawing.Point(125, 63);
+            this.lblPINCode.Location = new System.Drawing.Point(156, 63);
             this.lblPINCode.Name = "lblPINCode";
             this.lblPINCode.Size = new System.Drawing.Size(47, 26);
             this.lblPINCode.TabIndex = 136;
@@ -141,18 +141,19 @@ namespace ACAT.Extensions.Default.UI.Dialogs
             // 
             // lblMaxDigit
             // 
+            this.lblMaxDigit.AutoSize = true;
             this.lblMaxDigit.Font = new System.Drawing.Font("Arial", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lblMaxDigit.Location = new System.Drawing.Point(26, 127);
+            this.lblMaxDigit.Location = new System.Drawing.Point(24, 116);
             this.lblMaxDigit.Name = "lblMaxDigit";
-            this.lblMaxDigit.Size = new System.Drawing.Size(146, 26);
+            this.lblMaxDigit.Size = new System.Drawing.Size(117, 24);
             this.lblMaxDigit.TabIndex = 130;
-            this.lblMaxDigit.Text = "Digits: 0  to  ";
+            this.lblMaxDigit.Text = "Digits: 0  to";
             this.lblMaxDigit.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // tbPINCode
             // 
             this.tbPINCode.Font = new System.Drawing.Font("Arial", 15.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.tbPINCode.Location = new System.Drawing.Point(172, 60);
+            this.tbPINCode.Location = new System.Drawing.Point(203, 60);
             this.tbPINCode.MaxLength = 4;
             this.tbPINCode.Name = "tbPINCode";
             this.tbPINCode.Size = new System.Drawing.Size(80, 32);
@@ -162,28 +163,30 @@ namespace ACAT.Extensions.Default.UI.Dialogs
             // 
             // groupBox1
             // 
-            this.groupBox1.Controls.Add(this.label1);
+            this.groupBox1.Controls.Add(this.panelTitle);
+            this.groupBox1.Controls.Add(this.lblMaxDigit);
             this.groupBox1.Location = new System.Drawing.Point(12, 12);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(374, 248);
+            this.groupBox1.Size = new System.Drawing.Size(411, 248);
             this.groupBox1.TabIndex = 161;
             this.groupBox1.TabStop = false;
             // 
-            // label1
+            // panelTitle
             // 
-            this.label1.Font = new System.Drawing.Font("Arial", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label1.Location = new System.Drawing.Point(14, -2);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(226, 24);
-            this.label1.TabIndex = 161;
-            this.label1.Text = "Screen Lock Settings";
-            this.label1.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.panelTitle.AutoSize = true;
+            this.panelTitle.Font = new System.Drawing.Font("Arial", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.panelTitle.Location = new System.Drawing.Point(14, -2);
+            this.panelTitle.Name = "panelTitle";
+            this.panelTitle.Size = new System.Drawing.Size(198, 24);
+            this.panelTitle.TabIndex = 161;
+            this.panelTitle.Text = "ScreenLockSettings";
+            this.panelTitle.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // ScreenLockSettingsForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(398, 272);
+            this.ClientSize = new System.Drawing.Size(436, 272);
             this.Controls.Add(this.lblCancel);
             this.Controls.Add(this.lblOK);
             this.Controls.Add(this.svalMaxDigit);
@@ -193,13 +196,14 @@ namespace ACAT.Extensions.Default.UI.Dialogs
             this.Controls.Add(this.ltbMaxDigitMore);
             this.Controls.Add(this.tbMaxDigit);
             this.Controls.Add(this.sminMaxDigit);
-            this.Controls.Add(this.lblMaxDigit);
             this.Controls.Add(this.tbPINCode);
             this.Controls.Add(this.groupBox1);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.Name = "ScreenLockSettingsForm";
             this.Text = "ACAT";
             ((System.ComponentModel.ISupportInitialize)(this.tbMaxDigit)).EndInit();
             this.groupBox1.ResumeLayout(false);
+            this.groupBox1.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -219,7 +223,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         private Label lblMaxDigit;
         private TextBox tbPINCode;
         private GroupBox groupBox1;
-        private Label label1;
+        private Label panelTitle;
 
     }
 }

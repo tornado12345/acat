@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="ResizeScannerForm.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,49 +18,14 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Security.Permissions;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.PanelManagement;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Core.WidgetManagement;
 using ACAT.Lib.Extension;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Security.Permissions;
+using System.Windows.Forms;
 
 namespace ACAT.Extensions.Default.UI.Dialogs
 {
@@ -84,13 +49,13 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// <summary>
         /// The DialogCommon object
         /// </summary>
-        private readonly DialogCommon _dialogCommon;
+        private DialogCommon _dialogCommon;
 
         /// <summary>
         /// Scanner position before it is moved, so it can
         /// be restored later if reqd.
         /// </summary>
-        private readonly Windows.WindowPosition _initialWindowPosition;
+        private Windows.WindowPosition _initialWindowPosition;
 
         /// <summary>
         /// Did the user change anything?
@@ -122,21 +87,8 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         {
             InitializeComponent();
 
-            _dialogCommon = new DialogCommon(this);
-
-            _initialWindowPosition = Context.AppWindowPosition;
-
-            _dialogCommon.AutoDockScanner = false;
-
-            if (!_dialogCommon.Initialize())
-            {
-                Log.Debug("Initialization error");
-            }
-
             Load += ResizeScannerScreen_Load;
             FormClosing += ResizeScannerScreen_FormClosing;
-
-            subscribeToButtonEvents();
         }
 
         /// <summary>
@@ -146,6 +98,11 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         {
             get { return DescriptorAttribute.GetDescriptor(GetType()); }
         }
+
+        /// <summary>
+        /// Gets the PanelCommon object
+        /// </summary>
+        public IPanelCommon PanelCommon { get { return _dialogCommon; } }
 
         /// <summary>
         /// Gets the synchronization object for this scanner
@@ -170,6 +127,29 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         }
 
         /// <summary>
+        /// Intitializes the class
+        /// </summary>
+        /// <param name="startupArg">startup param</param>
+        /// <returns>true on success</returns>
+        public bool Initialize(StartupArg startupArg)
+        {
+            _dialogCommon = new DialogCommon(this);
+
+            _initialWindowPosition = Context.AppWindowPosition;
+
+            _dialogCommon.AutoDockScanner = false;
+
+            if (!_dialogCommon.Initialize(startupArg))
+            {
+                return false;
+            }
+
+            subscribeToButtonEvents();
+
+            return true;
+        }
+
+        /// <summary>
         /// Triggered when a widget is actuated.
         /// </summary>
         /// <param name="widget">Which one triggered?</param>
@@ -185,7 +165,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
                 return;
             }
 
-            Invoke(new MethodInvoker(delegate()
+            Invoke(new MethodInvoker(delegate
             {
                 switch (value)
                 {
@@ -276,11 +256,9 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// </summary>
         private void onBack()
         {
-            Log.Debug("chose back button.");
-
             if (_isDirty)
             {
-                if (DialogUtils.Confirm(this, "Save settings?"))
+                if (DialogUtils.Confirm(this, R.GetString("SaveSettings")))
                 {
                     _previewScreenInterface.SaveSettings();
                 }
@@ -302,7 +280,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         {
             _isDirty = true;
 
-            _dialogCommon.GetAnimationManager().Interrupt();
+            PanelCommon.AnimationManager.Interrupt();
             Windows.SetOpacity(this, 0.0f);
 
             var scanner = (_previewScanner as IScannerPanel);
@@ -319,7 +297,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// </summary>
         private void onRestoreDefaults()
         {
-            if (DialogUtils.Confirm("Restore default settings?"))
+            if (DialogUtils.Confirm(R.GetString("RestoreDefaultSettings")))
             {
                 _previewScreenInterface.RestoreDefaults();
                 _isDirty = true;
@@ -351,11 +329,12 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// <param name="eventArgs">event args</param>
         private void PositionSizeControllerOnEvtAutoRepositionScannerStop(object sender, EventArgs eventArgs)
         {
-            _dialogCommon.GetAnimationManager().Resume();
+            PanelCommon.AnimationManager.Resume();
             var scanner = (_previewScanner as IScannerPanel);
             if (scanner != null)
             {
                 scanner.ScannerCommon.PositionSizeController.ManualPosition = Context.AppWindowPosition;
+                scanner.ScannerCommon.PositionSizeController.AutoPosition = false;
 
                 scanner.ScannerCommon.PositionSizeController.EvtAutoRepositionScannerStop -=
                     PositionSizeControllerOnEvtAutoRepositionScannerStop;
@@ -369,7 +348,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// </summary>
         private void ResizeScannerScreen_FormClosing(object sender, FormClosingEventArgs e)
         {
-            unsubscribeToButtonEvents();
+            unsubscribeFromButtonEvents();
 
             if (_windowOverlapWatchdog != null)
             {
@@ -416,7 +395,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
             _windowOverlapWatchdog = new WindowOverlapWatchdog(this, true);
 
             _dialogCommon.OnLoad();
-            _dialogCommon.GetAnimationManager().Start(_dialogCommon.GetRootWidget());
+            PanelCommon.AnimationManager.Start(PanelCommon.RootWidget);
         }
 
         /// <summary>
@@ -425,7 +404,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// </summary>
         private void subscribeToButtonEvents()
         {
-            foreach (var widget in _dialogCommon.GetRootWidget().Children)
+            foreach (var widget in PanelCommon.RootWidget.Children)
             {
                 widget.EvtHighlightOn += widget_EvtHighlightOn;
                 widget.EvtHighlightOff += widget_EvtHighlightOff;
@@ -435,9 +414,9 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// <summary>
         /// Unsubscribe from button events
         /// </summary>
-        private void unsubscribeToButtonEvents()
+        private void unsubscribeFromButtonEvents()
         {
-            foreach (var widget in _dialogCommon.GetRootWidget().Children)
+            foreach (var widget in PanelCommon.RootWidget.Children)
             {
                 widget.EvtHighlightOn -= widget_EvtHighlightOn;
                 widget.EvtHighlightOff -= widget_EvtHighlightOff;
@@ -471,7 +450,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
                 help = buttonWidget.GetWidgetAttribute().ToolTip;
             }
 
-            Windows.SetText(labelToolTip, help);
+            Windows.SetText(labelToolTip, R.GetString(help));
         }
     }
 }

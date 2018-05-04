@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="SliderWidget.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,47 +18,13 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Windows.Forms;
-using System.Xml;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Core.WidgetManagement;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Globalization;
+using System.Windows.Forms;
+using System.Xml;
 
 namespace ACAT.Lib.Core.Widgets
 {
@@ -174,11 +140,6 @@ namespace ACAT.Lib.Core.Widgets
         private decimal _minValue = int.MinValue;
 
         /// <summary>
-        /// The number of ticks in the track bar
-        /// </summary>
-        private int _numTicks = DefaultTickCount;
-
-        /// <summary>
         /// Caption
         /// </summary>
         private String _sliderCaption = "Caption";
@@ -230,6 +191,7 @@ namespace ACAT.Lib.Core.Widgets
             String tickFrequency = XmlUtils.GetXMLAttrString(node, "tickfrequency");
             String sliderStep = XmlUtils.GetXMLAttrString(node, "step");
             String sliderCaption = XmlUtils.GetXMLAttrString(node, "caption");
+            sliderCaption = R.GetString(sliderCaption);
 
             int initialValue = XmlUtils.GetXMLAttrInt(node, "initialvalue", DefaultInitialSliderValue);
 
@@ -245,22 +207,25 @@ namespace ACAT.Lib.Core.Widgets
             {
                 _useDecimal = true;
 
-                _decimalStep = Convert.ToDecimal(sliderStep);
+                _decimalStep = 1;
+
+                stringToDecimal(sliderStep, ref _decimalStep);
 
                 if (_decimalStep >= 1)
                 {
                     Log.Error("SliderWidget::Load() - Warning!  Decimal step is greater than/equal to 1!");
                 }
 
-                _minValue = Convert.ToDecimal(min);
-                _maxValue = Convert.ToDecimal(max);
+                _minValue = 0;
+                _maxValue = 0;
 
-                _numTicks = Convert.ToInt32(Convert.ToDecimal(_maxValue - _minValue) / _decimalStep);
+                stringToDecimal(min, ref _minValue);
+                stringToDecimal(max, ref _maxValue);
 
                 decimal tempDecimal = Convert.ToDecimal(_minValue) / _decimalStep;
                 _minTicks = Convert.ToInt32(tempDecimal);
 
-                _maxTicks = _numTicks;
+                _maxTicks = Convert.ToInt32(Convert.ToDecimal(_maxValue) / _decimalStep);
 
                 tempDecimal = Convert.ToDecimal(initialValue) / _decimalStep;
                 _sliderTickPosition = Convert.ToInt32(tempDecimal);
@@ -466,6 +431,30 @@ namespace ACAT.Lib.Core.Widgets
                     Log.Debug("Unrecognized subclass " + subclass);
                     break;
             }
+        }
+
+        /// <summary>
+        /// Convert string to decimal
+        /// </summary>
+        /// <param name="inputString">string to convert</param>
+        /// <param name="value">converted value</param>
+        /// <returns>true on success</returns>
+        private bool stringToDecimal(String inputString, ref decimal value)
+        {
+            bool retVal = true;
+
+            try
+            {
+                value = decimal.Parse(inputString, CultureInfo.InvariantCulture);
+            }
+            catch (Exception ex)
+            {
+                Log.Debug("Error parsing decimal " + inputString + ", ex: " + ex.ToString());
+                retVal = false;
+            }
+
+            return retVal;
+            ;
         }
     }
 }

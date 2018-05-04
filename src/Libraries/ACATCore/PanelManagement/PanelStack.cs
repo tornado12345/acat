@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="PanelStack.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,48 +18,12 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
+using ACAT.Lib.Core.Audit;
+using ACAT.Lib.Core.Utility;
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Windows.Automation;
 using System.Windows.Forms;
-using ACAT.Lib.Core.Audit;
-using ACAT.Lib.Core.Utility;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-    "StyleCop.CSharp.ReadabilityRules",
-    "SA1126:PrefixCallsCorrectly",
-    Scope = "namespace",
-    Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-    "StyleCop.CSharp.ReadabilityRules",
-    "SA1101:PrefixLocalCallsWithThis",
-    Scope = "namespace",
-    Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-    "StyleCop.CSharp.ReadabilityRules",
-    "SA1121:UseBuiltInTypeAlias",
-    Scope = "namespace",
-    Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-    "StyleCop.CSharp.DocumentationRules",
-    "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-    Scope = "namespace",
-    Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-    "StyleCop.CSharp.NamingRules",
-    "SA1309:FieldNamesMustNotBeginWithUnderscore",
-    Scope = "namespace",
-    Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-    "StyleCop.CSharp.NamingRules",
-    "SA1300:ElementMustBeginWithUpperCaseLetter",
-    Scope = "namespace",
-    Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
 
 namespace ACAT.Lib.Core.PanelManagement
 {
@@ -72,6 +36,8 @@ namespace ACAT.Lib.Core.PanelManagement
     /// </summary>
     public class PanelStack
     {
+        private static bool _appCloseNotifed;
+
         /// <summary>
         /// The currently active and visible scanner form.
         /// </summary>
@@ -87,6 +53,15 @@ namespace ACAT.Lib.Core.PanelManagement
         private Form _currentPanel;
 
         /// <summary>
+        /// Initializes an instance of the class
+        /// </summary>
+        public PanelStack()
+        {
+            PreShowPanel = null;
+            PreShowPanelDisplayMode = DisplayModeTypes.None;
+        }
+
+        /// <summary>
         /// Raised when a scanner is closed
         /// </summary>
         public event ScannerClose EvtScannerClosed;
@@ -98,6 +73,38 @@ namespace ACAT.Lib.Core.PanelManagement
         {
             get { return _currentForm; }
         }
+
+        /// <summary>
+        /// Gets the display mode of the panel that is currently displayed
+        /// </summary>
+        public DisplayModeTypes PanelDisplayMode
+        {
+            get
+            {
+                if (_currentForm == null || !(_currentForm is IPanel))
+                {
+                    return DisplayModeTypes.None;
+                }
+
+                IPanel panel = _currentForm as IPanel;
+
+                return panel.PanelCommon.DisplayMode;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the panel that is about to be shown.  Call
+        /// this from the OnPause handler to see which panel is going
+        /// to be displayed. Has non-null value JUST before the panel
+        /// is shown, null all other times
+        /// </summary>
+        public IPanel PreShowPanel { get; private set; }
+
+        /// <summary>
+        /// Gets or sets the display mode of the panel that is about to
+        /// be shown
+        /// </summary>
+        public DisplayModeTypes PreShowPanelDisplayMode { get; private set; }
 
         /// <summary>
         /// Event handler for request to display a scanner. The
@@ -113,7 +120,7 @@ namespace ACAT.Lib.Core.PanelManagement
 
             if (_currentForm != null)
             {
-                Log.Debug("*********** _currentForm is " + _currentForm.Name + ", type: " + _currentForm.GetType() +
+                Log.Debug("_currentForm is " + _currentForm.Name + ", type: " + _currentForm.GetType() +
                             ", IsModal: " + _currentForm.Modal);
 
                 Form owner = _currentForm.Owner;
@@ -188,11 +195,11 @@ namespace ACAT.Lib.Core.PanelManagement
             {
                 if (currentScanner == null)
                 {
-                    Log.Debug("CurrentPanel is null. returning");
+                    Log.Debug("_currentPanel is null. returning");
                     return;
                 }
 
-                Log.Debug("**** Not a new window.  CurrentPanel is " + currentScanner.PanelClass +
+                Log.Debug("Not a new window.  _currentPanel is " + currentScanner.PanelClass +
                                 " requested panel is " + requestedPanelClass);
 
                 // if the current panel is not the same as the requested one, query the
@@ -286,7 +293,7 @@ namespace ACAT.Lib.Core.PanelManagement
                 _currentForm = null;
             }
         }
-
+        
         /// <summary>
         /// Creates the panel with the specified panel class
         /// </summary>
@@ -294,11 +301,7 @@ namespace ACAT.Lib.Core.PanelManagement
         /// <returns>the form for the panel</returns>
         public Form CreatePanel(String panelClass)
         {
-            var startupArg = new StartupArg(panelClass)
-            {
-                ConfigFileName = PanelConfigMap.GetConfigFileForPanel(panelClass)
-            };
-            return CreatePanel(panelClass, String.Empty, startupArg);
+            return CreatePanel(panelClass, String.Empty, new StartupArg(panelClass));
         }
 
         /// <summary>
@@ -309,12 +312,7 @@ namespace ACAT.Lib.Core.PanelManagement
         /// <returns>the form for the panel</returns>
         public Form CreatePanel(String panelClass, String title)
         {
-            var startupArg = new StartupArg(panelClass)
-            {
-                ConfigFileName = PanelConfigMap.GetConfigFileForPanel(panelClass)
-            };
-
-            return CreatePanel(panelClass, title, startupArg);
+            return CreatePanel(panelClass, title, new StartupArg(panelClass));
         }
 
         /// <summary>
@@ -332,15 +330,9 @@ namespace ACAT.Lib.Core.PanelManagement
 
             Log.IsNull("Form for this panel ", form);
 
-            if (form is IScannerPanel)
+            if (form is IPanel)
             {
-                var scannerPanel = form as IScannerPanel;
-                if (String.IsNullOrEmpty(startupArg.ConfigFileName))
-                {
-                    startupArg.ConfigFileName = PanelConfigMap.GetConfigFileForPanel(panelClass);
-                }
-
-                scannerPanel.Initialize(startupArg);
+                (form as IPanel).Initialize(startupArg);
             }
 
             Log.Debug("Returning form from createPanel");
@@ -455,7 +447,7 @@ namespace ACAT.Lib.Core.PanelManagement
         /// <returns>true on success</returns>
         public bool Show(IPanel parent, IPanel panel)
         {
-            return show(parent, panel, false);
+            return show(parent, panel, DisplayModeTypes.Normal);
         }
 
         /// <summary>
@@ -465,7 +457,7 @@ namespace ACAT.Lib.Core.PanelManagement
         /// <returns></returns>
         public bool Show(IPanel form)
         {
-            return show(null, form, false);
+            return show(null, form, DisplayModeTypes.Normal);
         }
 
         /// <summary>
@@ -514,23 +506,46 @@ namespace ACAT.Lib.Core.PanelManagement
                 if (_currentForm is IPanel)
                 {
                     Log.Debug("Showing as dialog child: " + panel.GetType() + ", parent: " + _currentForm.GetType());
-                    retVal = show((IPanel)_currentForm, panel, true);
+                    retVal = show((IPanel)_currentForm, panel, DisplayModeTypes.Dialog);
                 }
                 else
                 {
                     Log.Debug("Just showing " + form.GetType());
                     //retVal = Show(panel);
-                    retVal = show(null, panel, true);
+                    retVal = show(null, panel, DisplayModeTypes.Dialog);
                 }
             }
             else
             {
                 var parentForm = parent as Form;
                 Log.Debug("showDialog parent: " + parentForm.Name + ", type: " + parentForm.GetType());
-                retVal = show(parent, panel, true);
+                retVal = show(parent, panel, DisplayModeTypes.Dialog);
             }
 
             return retVal;
+        }
+
+        /// <summary>
+        /// Displays the panel as a popup. Parent is the panel
+        /// making the call. Also Pauses the parent
+        /// It will be Resumed when the 'panel' is closed.
+        /// </summary>
+        /// <param name="parent">The parent panel</param>
+        /// <param name="panel">the panel to show</param>
+        /// <returns>true on success</returns>
+        public bool ShowPopup(IPanel parent, IPanel panel)
+        {
+            return show(parent, panel, DisplayModeTypes.Popup);
+        }
+
+        /// <summary>
+        /// Displays the panel as a popup
+        /// </summary>
+        /// <param name="form">panel to display</param>
+        /// <returns>true on succes</returns>
+        public bool ShowPopup(IPanel form)
+        {
+            return show(null, form, DisplayModeTypes.Popup);
         }
 
         /// <summary>
@@ -551,15 +566,15 @@ namespace ACAT.Lib.Core.PanelManagement
 
             if (form is MenuPanelBase)
             {
-                panelClass = PanelClasses.PanelCategory.ContextualMenu.ToString();
+                panelClass = PanelCategory.Menu.ToString();
             }
             else if (form is IScannerPanel)
             {
-                panelClass = PanelClasses.PanelCategory.Scanner.ToString();
+                panelClass = PanelCategory.Scanner.ToString();
             }
             else if (form is IDialogPanel)
             {
-                panelClass = PanelClasses.PanelCategory.Dialog.ToString();
+                panelClass = PanelCategory.Dialog.ToString();
             }
             else
             {
@@ -678,11 +693,12 @@ namespace ACAT.Lib.Core.PanelManagement
             {
                 FocusedElement = arg.MonitorInfo.FocusedElement,
                 PanelClass = arg.PanelClass,
-                ConfigFileName = PanelConfigMap.GetConfigFileForPanel(arg.PanelClass),
                 Arg = arg.RequestArg
             };
 
-            Log.Debug("panelClass:  " + arg.PanelClass + ", ConfigFIle: " + startupArg.ConfigFileName);
+            var panelConfigMapEntry = PanelConfigMap.GetPanelConfigMapEntry(arg.PanelClass);
+
+            Log.Debug("panelClass:  " + arg.PanelClass + ", ConfigFIle: " + ((panelConfigMapEntry != null) ? panelConfigMapEntry.ConfigFileName : String.Empty));
             return scannerPanel.Initialize(startupArg);
         }
 
@@ -705,10 +721,13 @@ namespace ACAT.Lib.Core.PanelManagement
                 return;
             }
 
+            Log.Debug("Setting CLOSED for " + form.Name);
+            (form as IPanel).SyncObj.Status = SyncLock.StatusValues.Closed;
+
             form.FormClosed -= panel_FormClosed;
 
             Form parentForm = form.Owner;
-            String panelClass = PanelClasses.None;
+            
             Form[] array = form.OwnedForms;
 
             auditLogScannerEvent(form, "close");
@@ -718,30 +737,32 @@ namespace ACAT.Lib.Core.PanelManagement
             // close all the forms this panel owns
             while (true)
             {
-                Form[] a = form.OwnedForms;
-                if (a.Length == 0)
+                Form[] ownedForms = form.OwnedForms;
+                if (ownedForms.Length == 0)
                 {
                     Log.Debug(form.Name + ": No more owned forms. Breaking");
                     break;
                 }
 
-                Log.Debug("Removing owned form from list. " + a[0].Name);
-                form.RemoveOwnedForm(a[0]);
-                Log.Debug("Calling close on " + a[0].Name);
-                Windows.CloseForm(a[0]);
+                Log.Debug("Removing owned form from list. " + ownedForms[0].Name);
+                form.RemoveOwnedForm(ownedForms[0]);
+                Log.Debug("Calling close on " + ownedForms[0].Name);
+                Windows.CloseForm(ownedForms[0]);
             }
 
             Log.Debug("form Name: " + form.Name + ", type: " + form.GetType());
 
-            if (_currentPanel is IScannerPanel)
-            {
-                panelClass = ((IScannerPanel)_currentPanel).PanelClass;
-            }
-
             // Exit the application if instructed to do so.
             if (Context.AppQuit)
             {
-                Application.ExitThread();
+                if (!_appCloseNotifed)
+                {
+                    _appCloseNotifed = true;
+
+                    Context.AppPanelManager.NotifyQuitApplication();
+
+                    Application.ExitThread();
+                }
             }
             else if (parentForm != null)
             {
@@ -757,13 +778,18 @@ namespace ACAT.Lib.Core.PanelManagement
                 }
                 else
                 {
-                    Log.Debug("Calling OnResume on parentForm " + parentForm.Name);
-                    parentPanel.OnResume();
-                    Log.Debug("parentform is not null. Setting _currentPanel to " + parentForm.Name +
+                    Log.Debug("parentform is not closing. Setting _currentPanel to " + parentForm.Name +
                                 ", type: " + parentForm.GetType());
 
                     _currentPanel = parentForm;
                     _currentForm = parentForm;
+
+                    Log.Debug("Calling OnResume on parentForm " + parentForm.Name);
+
+                    parentPanel.OnResume();
+
+                    //_currentPanel = parentForm;  // moved up
+                    //_currentForm = parentForm;  // moved up
 
                     auditLogScannerEvent(parentForm, "show");
                 }
@@ -771,12 +797,14 @@ namespace ACAT.Lib.Core.PanelManagement
             else
             {
                 Log.Debug("parentform is null");
+                _currentPanel = null;
+                _currentForm = null;
             }
 
-            // Inform the AgentManager that a scanner just closed
+            var panelClass = (form is IScannerPanel) ? ((IScannerPanel)form).PanelClass : PanelClasses.None;
             if (!PanelConfigMap.AreEqual(panelClass, PanelClasses.None))
             {
-                Log.Debug("Calling OnPanelClosed for " + panelClass);
+                Log.Debug("Calling AppAgentMgr.OnPanelClosed for " + panelClass);
                 Context.AppAgentMgr.OnPanelClosed(panelClass);
             }
 
@@ -790,9 +818,7 @@ namespace ACAT.Lib.Core.PanelManagement
                 Log.Debug("EvtScannerClosed is NULL");
             }
 
-            Log.Debug("Setting CLOSED for " + form.Name);
-
-            (form as IPanel).SyncObj.Status = SyncLock.StatusValues.Closed;
+            // (form as IPanel).SyncObj.Status = SyncLock.StatusValues.Closed;  // moved this up
 
             Log.Debug("Exit " + form.Name);
         }
@@ -805,9 +831,9 @@ namespace ACAT.Lib.Core.PanelManagement
         /// </summary>
         /// <param name="parent">parent panel</param>
         /// <param name="panel">panel to show</param>
-        /// <param name="showAsDialog">true to show as dialog</param>
+        /// <param name="displayMode">how to display the panel</param>
         /// <returns>true on success</returns>
-        private bool show(IPanel parent, IPanel panel, bool showAsDialog)
+        private bool show(IPanel parent, IPanel panel, DisplayModeTypes displayMode)
         {
             Form panelForm = (Form)panel;
             Form parentForm = (Form)parent;
@@ -819,15 +845,19 @@ namespace ACAT.Lib.Core.PanelManagement
 
             _currentForm = panelForm;
 
+            PreShowPanel = panel;
+            PreShowPanelDisplayMode = displayMode;
+
             if (parent != null)
             {
                 parent.OnPause();
 
-                if (showAsDialog)
+                if (displayMode == DisplayModeTypes.Dialog)
                 {
                     Log.Debug("Showing Dialog" + panelForm.Name + " with parent " + parentForm.Name);
 
                     auditLogScannerEvent(panelForm, "show");
+                    Context.AppPanelManager.NotifyPanelPreShow(new PanelPreShowEventArg(panel, displayMode));
                     Windows.ShowDialog(parentForm, panelForm);
                 }
                 else
@@ -838,6 +868,9 @@ namespace ACAT.Lib.Core.PanelManagement
                                 ", type: " + panelForm.GetType());
                     _currentPanel = panelForm;
                     auditLogScannerEvent(panelForm, "show");
+
+                    Context.AppPanelManager.NotifyPanelPreShow(new PanelPreShowEventArg(panel, displayMode));
+
                     Windows.Show(parentForm, panelForm);
                 }
             }
@@ -850,15 +883,22 @@ namespace ACAT.Lib.Core.PanelManagement
                 _currentPanel = panelForm;
 
                 auditLogScannerEvent(panelForm, "show");
-                if (showAsDialog)
+                if (displayMode == DisplayModeTypes.Dialog)
                 {
+                    Context.AppPanelManager.NotifyPanelPreShow(new PanelPreShowEventArg(panel, displayMode));
+
                     panelForm.ShowDialog();
                 }
                 else
                 {
+                    Context.AppPanelManager.NotifyPanelPreShow(new PanelPreShowEventArg(panel, displayMode));
+
                     Windows.ShowForm(panelForm);
                 }
             }
+
+            PreShowPanel = null;
+            PreShowPanelDisplayMode = DisplayModeTypes.None;
 
             return true;
         }

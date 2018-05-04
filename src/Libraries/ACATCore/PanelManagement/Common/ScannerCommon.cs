@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="ScannerCommon.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,14 +18,6 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Drawing;
-using System.Runtime.InteropServices;
-using System.Security.Permissions;
-using System.Windows.Forms;
 using ACAT.Lib.Core.AbbreviationsManagement;
 using ACAT.Lib.Core.AgentManagement;
 using ACAT.Lib.Core.AnimationManagement;
@@ -36,41 +28,12 @@ using ACAT.Lib.Core.ThemeManagement;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Core.WidgetManagement;
 using ACAT.Lib.Core.Widgets;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Runtime.InteropServices;
+using System.Security.Permissions;
+using System.Windows.Forms;
 
 namespace ACAT.Lib.Core.PanelManagement
 {
@@ -84,7 +47,7 @@ namespace ACAT.Lib.Core.PanelManagement
     /// form.  The documentation for this class contains info on where each
     /// of the functions need to be invoked.
     /// </summary>
-    public class ScannerCommon : IDisposable
+    public class ScannerCommon : IDisposable, IPanelCommon
     {
         /// <summary>
         /// Status bar for the scanner form
@@ -103,21 +66,6 @@ namespace ACAT.Lib.Core.PanelManagement
         private readonly IScannerPanel _scannerPanel;
 
         /// <summary>
-        /// Displays the state of the Alt key
-        /// </summary>
-        private readonly StatusBarPanel _statusBarPanelAlt = new StatusBarPanel();
-
-        /// <summary>
-        /// Displays the state of the Ctrl key
-        /// </summary>
-        private readonly StatusBarPanel _statusBarPanelCtrl = new StatusBarPanel();
-
-        /// <summary>
-        /// DIsplays the state of the Shift key
-        /// </summary>
-        private readonly StatusBarPanel _statusBarPanelShift = new StatusBarPanel();
-
-        /// <summary>
         /// used for synchronization
         /// </summary>
         private readonly SyncLock _syncLock;
@@ -128,6 +76,11 @@ namespace ACAT.Lib.Core.PanelManagement
         private AnimationManager _animationManager;
 
         /// <summary>
+        /// Aspect ratio of the form at design time
+        /// </summary>
+        private float _designTimeAspectRatio = 0.0f;
+
+        /// <summary>
         /// Has the scanner been shown as a modal dialog?
         /// </summary>
         private bool _dialogMode;
@@ -136,6 +89,11 @@ namespace ACAT.Lib.Core.PanelManagement
         /// Has this object been disposed
         /// </summary>
         private bool _disposed;
+
+        /// <summary>
+        /// Remember if this is the first call to the OnClientSizeChanged handler
+        /// </summary>
+        private bool _firstCallToClientSizeChanged = true;
 
         /// <summary>
         /// Tracks scanner idle time.  If the user hasn't activated
@@ -160,6 +118,11 @@ namespace ACAT.Lib.Core.PanelManagement
         private Widget _rootWidget;
 
         /// <summary>
+        /// Is the scanner opacity != 1.0?
+        /// </summary>
+        private bool _scannerFaded;
+
+        /// <summary>
         /// The status bar object for the scanner
         /// </summary>
         private ScannerStatusBar _scannerStatusBar;
@@ -182,7 +145,7 @@ namespace ACAT.Lib.Core.PanelManagement
         private WindowOverlapWatchdog _windowOverlapWatchdog;
 
         /// <summary>
-        /// Instantiates a new instance of the class
+        /// Initializes a new instance of the class
         /// </summary>
         /// <param name="iScannerPanel">The scanner Form object</param>
         public ScannerCommon(IScannerPanel iScannerPanel)
@@ -205,10 +168,46 @@ namespace ACAT.Lib.Core.PanelManagement
         public static event ScannerShow EvtScannerShow;
 
         /// <summary>
+        /// What to do the parent scanner in the OnPause() handler
+        /// </summary>
+        public enum PauseDisplayMode
+        {
+            /// <summary>
+            /// Don't do anything. Keep the scanner active
+            /// </summary>
+            None,
+
+            /// <summary>
+            /// Perform the default behavior
+            /// </summary>
+            Default,
+
+            /// <summary>
+            /// Hide the parent scanner
+            /// </summary>
+            HideScanner,
+
+            /// <summary>
+            /// Fade the parent scanner
+            /// </summary>
+            FadeScanner,
+        }
+
+        /// <summary>
         /// Gets the widget that was actuated as a result of one
         /// of the actuator switches trigerring
         /// </summary>
         public Widget ActuatedWidget { get; private set; }
+
+        /// <summary>
+        /// Gets the Animation Manager object
+        /// </summary>
+        public AnimationManager AnimationManager { get { return _animationManager; } }
+
+        /// <summary>
+        /// Gets the panel config id for this scanner
+        /// </summary>
+        public Guid ConfigId { get; private set; }
 
         /// <summary>
         /// Gets or sets the dialog mode of the scanner.  If TRUE,
@@ -219,6 +218,11 @@ namespace ACAT.Lib.Core.PanelManagement
         ///
         /// </summary>
         public bool DialogMode { get; private set; }
+
+        /// <summary>
+        /// Gets the display mode of the panel
+        /// </summary>
+        public DisplayModeTypes DisplayMode { get; private set; }
 
         /// <summary>
         /// Gets/sets whether to hide the scanner after the scanner goes
@@ -278,6 +282,11 @@ namespace ACAT.Lib.Core.PanelManagement
         }
 
         /// <summary>
+        /// Gets the widget that reprensents the form
+        /// </summary>
+        public Widget RootWidget { get { return _rootWidget; } }
+
+        /// <summary>
         /// Gets the parent scanner form
         /// </summary>
         public Form ScannerForm { get; private set; }
@@ -323,27 +332,15 @@ namespace ACAT.Lib.Core.PanelManagement
         }
 
         /// <summary>
-        /// Helps with auto completing words, handling abbreviations, 
+        /// Helps with auto completing words, handling abbreviations,
         /// spell check etc.
         /// </summary>
         public TextController TextController { get; private set; }
 
         /// <summary>
-        /// Activates the button that was triggered by
-        /// a switch actuator. 'command' is the character associated
-        /// with the button. For eg, if 'command' is the letter 'a',
-        /// the letter a will be sent to the application window
+        /// Gets the WidgetManager objet
         /// </summary>
-        /// <param name="widget">widget to activate</param>
-        /// <param name="value">char associated with the button</param>
-        public void ActuateButton(Widget widget, char value)
-        {
-            if (widget is IButtonWidget)
-            {
-                var button = (IButtonWidget)widget;
-                actuateNormalKey(button.GetWidgetAttribute().Modifiers, value);
-            }
-        }
+        public WidgetManager WidgetManager { get { return _widgetManager; } }
 
         /// <summary>
         /// Autocompletes the partially entered word at the
@@ -356,38 +353,24 @@ namespace ACAT.Lib.Core.PanelManagement
         }
 
         /// <summary>
-        /// Creates the status bar for the form to display the status of the
-        /// Ctrl, Alt and Shift keys
+        /// Check to see if a command should be enabled or not.
+        /// This depends on the context.   The arg parameter
+        /// contains the widget/command object in question.
         /// </summary>
-        public void CreateStatusBar()
+        /// <param name="arg">Argument</param>
+        public void CheckCommandEnabled(CommandEnabledArg arg)
         {
-            ScannerForm.Height += 30;
-
-            _statusBarPanelShift.BorderStyle = StatusBarPanelBorderStyle.None;
-            StatusBarControl.Panels.Add(_statusBarPanelShift);
-
-            _statusBarPanelCtrl.BorderStyle = StatusBarPanelBorderStyle.None;
-            StatusBarControl.Panels.Add(_statusBarPanelCtrl);
-
-            _statusBarPanelAlt.BorderStyle = StatusBarPanelBorderStyle.None;
-            StatusBarControl.Panels.Add(_statusBarPanelAlt);
-
-            StatusBarControl.SizingGrip = false;
-            StatusBarControl.ShowPanels = true;
-
-            StatusBarControl.Height = 30;
-            StatusBarControl.Margin = new Padding(4, 4, 4, 4);
-            StatusBarControl.Font = new Font("Arial", 16.0f);
-            ScannerForm.Controls.Add(StatusBarControl);
-
-            var statusbar = new ScannerStatusBar
+            if (_syncLock.IsClosing())
             {
-                AltStatus = _statusBarPanelAlt,
-                CtrlStatus = _statusBarPanelCtrl,
-                ShiftStatus = _statusBarPanelShift,
-            };
+                return;
+            }
 
-            StatusBar = statusbar;
+            _scannerPanel.CheckCommandEnabled(arg);
+
+            if (!arg.Handled)
+            {
+                Context.AppAgentMgr.CheckCommandEnabled(arg);
+            }
         }
 
         /// <summary>
@@ -403,31 +386,13 @@ namespace ACAT.Lib.Core.PanelManagement
         }
 
         /// <summary>
-        /// Returns the animation manager object
+        /// Fades the scanner with parital opacity and pauses watchdog
         /// </summary>
-        /// <returns></returns>
-        public AnimationManager GetAnimationManager()
+        public void FadeScanner()
         {
-            return _animationManager;
-        }
-
-        /// <summary>
-        /// Returns the root widget for the form (this is the
-        /// widget wrapper for the form itself)
-        /// </summary>
-        /// <returns></returns>
-        public Widget GetRootWidget()
-        {
-            return _rootWidget;
-        }
-
-        /// <summary>
-        /// Returns the widgetmanager object
-        /// </summary>
-        /// <returns></returns>
-        public WidgetManager GetWidgetManager()
-        {
-            return _widgetManager;
+            _windowOverlapWatchdog.Pause();
+            Windows.SetOpacity(ScannerForm, 0.7f);
+            _scannerFaded = true;
         }
 
         /// <summary>
@@ -496,15 +461,15 @@ namespace ACAT.Lib.Core.PanelManagement
         {
             Log.Debug("Entered from Initialize");
 
-            Glass.Enable = CoreGlobals.AppPreferences.EnableGlass;
+            Glass.Enable = false;
 
             Glass.EvtShowGlass += Glass_EvtShowGlass;
+
+            Context.AppPanelManager.EvtPanelPreShow += AppPanelManager_EvtPanelPreShow;
 
             StartupArg = startupArg;
 
             StatusBarController = new StatusBarController();
-
-            ScannerForm.AutoScaleMode = AutoScaleMode.None;
 
             ScannerForm.TopMost = true;
 
@@ -525,17 +490,19 @@ namespace ACAT.Lib.Core.PanelManagement
 
             _dialogMode = startupArg.DialogMode;
 
-            var configFile = startupArg.ConfigFileName;
-            if (String.IsNullOrEmpty(configFile))
+            var panelConfigMapEntry = PanelConfigMap.GetPanelConfigMapEntry(startupArg.PanelClass);
+            if (panelConfigMapEntry == null) // did not find the panel
             {
-                configFile = PanelConfigMap.GetConfigFileForScreen(ScannerForm.GetType());
+                return false;
             }
 
-            bool retVal = initWidgetManager(configFile);
+            ConfigId = panelConfigMapEntry.ConfigId;
+
+            bool retVal = initWidgetManager(panelConfigMapEntry);
 
             if (retVal)
             {
-                retVal = initAnimationManager(configFile);
+                retVal = initAnimationManager(panelConfigMapEntry);
             }
 
             if (retVal)
@@ -543,16 +510,38 @@ namespace ACAT.Lib.Core.PanelManagement
                 createIdleTimer();
             }
 
-            PositionSizeController.Initialize();
+            if (retVal)
+            {
+                PositionSizeController.Initialize();
 
-            PositionSizeController.AutoSetPosition();
+                PositionSizeController.AutoSetPosition();
 
-            _windowOverlapWatchdog = new WindowOverlapWatchdog(ScannerForm);
+                _windowOverlapWatchdog = new WindowOverlapWatchdog(ScannerForm);
 
-            WindowActivityMonitor.EvtWindowMonitorHeartbeat += WindowActivityMonitor_EvtWindowMonitorHeartbeat;
+                WindowActivityMonitor.EvtWindowMonitorHeartbeat += WindowActivityMonitor_EvtWindowMonitorHeartbeat;
+            }
 
-            Log.Debug("Returning from Initialize");
+            Log.Debug("Returning from Initialize " + retVal);
+
             return retVal;
+        }
+
+        /// <summary>
+        /// Call this in the form's OnClientChanged handler.
+        /// Client size changed.  Resize the form to maintain aspect ratio
+        /// If the app is DPI aware, the form doesn't scale properly.  The
+        /// vertical gets squeezed.  Let's store the design time aspect
+        /// ratio and then use it later in the OnLoad to restore the aspect
+        /// ratio.
+        /// </summary>
+        /// <param name="e">event args</param>
+        public void OnClientSizeChanged()
+        {
+            if (_firstCallToClientSizeChanged)
+            {
+                _designTimeAspectRatio = (float)ScannerForm.ClientSize.Height / ScannerForm.ClientSize.Width;
+                _firstCallToClientSizeChanged = false;
+            }
         }
 
         /// <summary>
@@ -584,10 +573,10 @@ namespace ACAT.Lib.Core.PanelManagement
         /// Focus changed in the foreground application. Set widget
         /// enabled states
         /// </summary>
-        /// <param name="monitorInfo"></param>
+        /// <param name="monitorInfo">info about the active application</param>
         public void OnFocusChanged(WindowActivityMonitorInfo monitorInfo)
         {
-            SetWidgetEnabledStates(monitorInfo);
+            setWidgetEnabledStates(monitorInfo);
         }
 
         /// <summary>
@@ -612,6 +601,8 @@ namespace ACAT.Lib.Core.PanelManagement
             {
                 _animationManager.EvtPlayerStateChanged -= animationManager_EvtPlayerStateChanged;
             }
+
+            Context.AppPanelManager.EvtPanelPreShow -= AppPanelManager_EvtPanelPreShow;
 
             Glass.EvtShowGlass -= Glass_EvtShowGlass;
 
@@ -657,18 +648,14 @@ namespace ACAT.Lib.Core.PanelManagement
         [EnvironmentPermission(SecurityAction.LinkDemand, Unrestricted = true)]
         public void OnLoad(bool resetTalkWindowPosition = true)
         {
+            restoreAspectRatio();
+
             PositionSizeController.OnLoad();
 
             TextController.OnLoad();
 
             PositionSizeController.ScaleForm();
             Windows.SetWindowPosition(ScannerForm, Context.AppWindowPosition);
-
-            if (Context.ShowTalkWindowOnStartup)
-            {
-                Context.AppTalkWindowManager.ToggleTalkWindow();
-                Context.ShowTalkWindowOnStartup = false;
-            }
 
             if (resetTalkWindowPosition)
             {
@@ -679,13 +666,15 @@ namespace ACAT.Lib.Core.PanelManagement
 
             subscribeToEvents();
 
-            SetWidgetEnabledStates(WindowActivityMonitor.GetForegroundWindowInfo());
+            setWidgetEnabledStates(WindowActivityMonitor.GetForegroundWindowInfo());
+
+            Context.AppPanelManager.EvtDisplaySettingsChanged += AppPanelManager_EvtDisplaySettingsChanged;
         }
 
         /// <summary>
         /// Call this in the OnPause hander in the form.
         /// </summary>
-        public void OnPause()
+        public void OnPause(PauseDisplayMode mode = PauseDisplayMode.Default)
         {
             if (_isPaused)
             {
@@ -696,23 +685,30 @@ namespace ACAT.Lib.Core.PanelManagement
 
             try
             {
-                if (!DialogMode)
+                if (DialogMode)
                 {
-                    if (!KeepTalkWindowActive)
-                    {
-                        if (!Context.AppTalkWindowManager.IsPaused)
-                        {
-                            ScannerForm.Invoke(new MethodInvoker(delegate
-                            {
-                                Context.AppTalkWindowManager.Pause();
+                    return;
+                }
 
-                                _talkWindowPaused = true;
-                            }));
-                        }
-                        else
+                AnimationManager.Pause();
+
+                setDisplayStateOnPause(mode);
+
+                if (!KeepTalkWindowActive &&
+                    Context.AppPanelManager.PreShowPanelDisplayMode != DisplayModeTypes.Popup)
+                {
+                    if (!Context.AppTalkWindowManager.IsPaused && Context.AppTalkWindowManager.IsTalkWindowActive)
+                    {
+                        ScannerForm.Invoke(new MethodInvoker(delegate
                         {
-                            _talkWindowPaused = false;
-                        }
+                            Context.AppTalkWindowManager.Pause();
+
+                            _talkWindowPaused = true;
+                        }));
+                    }
+                    else
+                    {
+                        _talkWindowPaused = false;
                     }
                 }
             }
@@ -736,9 +732,13 @@ namespace ACAT.Lib.Core.PanelManagement
 
             try
             {
-                updateStatusBar();
-
                 PositionSizeController.ScaleForm();
+
+                ShowScanner();
+
+                AnimationManager.Resume();
+
+                updateStatusBar();
 
                 if (!DialogMode)
                 {
@@ -765,14 +765,58 @@ namespace ACAT.Lib.Core.PanelManagement
         }
 
         /// <summary>
+        /// Creates the status bar for the form to display the status of the
+        /// Ctrl, Alt and Shift keys
+        /// </summary>
+        public void SetStatusBar(StatusStrip statusStrip)
+        {
+            ToolStripStatusLabel toolStripAltStatus = null;
+            ToolStripStatusLabel toolStripCtrlStatus = null;
+            ToolStripStatusLabel toolStripShiftStatus = null;
+
+            statusStrip.SizingGrip = false;
+
+            if (statusStrip.Items.Count >= 1 && statusStrip.Items[0] is ToolStripStatusLabel)
+            {
+                toolStripShiftStatus = statusStrip.Items[0] as ToolStripStatusLabel;
+            }
+
+            if (statusStrip.Items.Count >= 2 && statusStrip.Items[1] is ToolStripStatusLabel)
+            {
+                toolStripCtrlStatus = statusStrip.Items[1] as ToolStripStatusLabel;
+            }
+
+            if (statusStrip.Items.Count >= 3 && statusStrip.Items[2] is ToolStripStatusLabel)
+            {
+                toolStripAltStatus = statusStrip.Items[2] as ToolStripStatusLabel;
+            }
+
+            var statusbar = new ScannerStatusBar
+            {
+                AltStatus = toolStripAltStatus,
+                CtrlStatus = toolStripCtrlStatus,
+                ShiftStatus = toolStripShiftStatus,
+            };
+
+            StatusBar = statusbar;
+        }
+
+        /// <summary>
         /// Displays the scanner. Makes it the topmost window
         /// </summary>
         public void ShowScanner()
         {
             if (ScannerForm != null)
             {
-                Windows.SetTopMost(ScannerForm);
                 Windows.SetVisible(ScannerForm, true);
+                Windows.SetTopMost(ScannerForm);
+
+                if (_scannerFaded)
+                {
+                    Windows.SetOpacity(ScannerForm, 1.0f);
+                    _windowOverlapWatchdog.Resume();
+                    _scannerFaded = false;
+                }
             }
         }
 
@@ -789,6 +833,8 @@ namespace ACAT.Lib.Core.PanelManagement
 
                 if (disposing)
                 {
+                    Context.AppPanelManager.EvtDisplaySettingsChanged -= AppPanelManager_EvtDisplaySettingsChanged;
+
                     if (_windowOverlapWatchdog != null)
                     {
                         _windowOverlapWatchdog.Dispose();
@@ -829,12 +875,10 @@ namespace ACAT.Lib.Core.PanelManagement
         {
             ActuatedWidget = null;
 
-            if (widget is WordListItemWidget)
-            {
-                return;
-            }
-
-            if (String.IsNullOrEmpty(widget.Value) || !(widget is IButtonWidget))
+            if (_isPaused ||
+                widget is WordListItemWidget ||
+                String.IsNullOrEmpty(widget.Value) ||
+                !(widget is IButtonWidget))
             {
                 return;
             }
@@ -843,68 +887,68 @@ namespace ACAT.Lib.Core.PanelManagement
 
             ActuatedWidget = widget;
 
-            // If the first letter of text is '@', this is a special key.
-            if (widget.Value[0] != '@')
+            if (widget.IsCommand)
             {
-                actuateNormalKey(button.GetWidgetAttribute().Modifiers, widget.Value[0]);
+                runCommand(widget.Command);
+            }
+            else if (button.GetWidgetAttribute().IsVirtualKey)
+            {
+                actuateVirtualKey(button.GetWidgetAttribute(), widget.Value);
             }
             else
             {
-                actuateSpecialKey(button.GetWidgetAttribute().Modifiers, widget.Value, button.GetWidgetAttribute().IsVirtualKey);
+                actuateKey(button.GetWidgetAttribute(), widget.Value[0]);
             }
 
             ActuatedWidget = null;
         }
 
         /// <summary>
-        /// Handles actuation of a non-special key (eg a-z, etc). Modifiers
+        /// Handles actuation of a keyboard key (eg a-z, punctuations etc). Modifiers
         /// are optionally shift, ctrl, alt etc
         /// </summary>
         /// <param name="modifiers">modifier keys</param>
         /// <param name="value">String to send</param>
-        private void actuateNormalKey(ArrayList modifiers, char value)
+        private void actuateKey(WidgetAttribute widgetAttribute, char value)
         {
             Log.Debug(value.ToString());
-            if (!TextController.HandlePunctuation(modifiers, value))
+            if (!TextController.HandlePunctuation(widgetAttribute.Modifiers, value))
             {
-                TextController.HandleAlphaNumericChar(modifiers, value);
+                if ((KeyStateTracker.IsShiftOn() || KeyStateTracker.IsCapsLockOn()) &&
+                    !String.IsNullOrEmpty(widgetAttribute.ShiftValue))
+                {
+                    TextController.HandleAlphaNumericChar(widgetAttribute.ShiftValue[0]);
+                }
+                else
+                {
+                    TextController.HandleAlphaNumericChar(widgetAttribute.Modifiers, value);
+                }
             }
         }
 
         /// <summary>
-        /// Handles actuation of a button whose 'value' begins with
-        /// an '@'. If the button command begins with an @, it could either
-        /// be a virtual key defined in the .NET class Keys, or
-        /// it could be a command
-        /// If is a command, the form is notified and it's handled there
+        /// Handles actuation of a button whose "virtualkey" attribute is set to
+        /// true in the WidgetAtribute for the button in the panel config file.
+        /// This means the key is a string representation of the Keys enum.
         /// </summary>
-        /// <param name="modifiers"></param>
-        /// <param name="value"></param>
-        /// <param name="isVirtualKey"></param>
-        private void actuateSpecialKey(ArrayList modifiers, String value, bool isVirtualKey)
+        /// <param name="widgetAttribute">widgetattribute of the button</param>
+        /// <param name="value">value of the key</param>
+        private void actuateVirtualKey(WidgetAttribute widgetAttribute, String value)
         {
-            Log.Debug("command=" + value + " isVirtualKey=" + isVirtualKey.ToString());
+            Log.Debug("VirtualKey: " + value);
 
-            if (isVirtualKey)
+            Keys key = TextController.MapVirtualKey(value);
+            if (key == Keys.Escape && Context.AppTalkWindowManager.IsTalkWindowVisible)
             {
-                Keys key = TextController.MapVirtualKey(value);
-                if (key == Keys.Escape && Context.AppTalkWindowManager.IsTalkWindowVisible)
-                {
-                    Context.AppTalkWindowManager.CloseTalkWindow();
-                }
-                else if (key == Keys.Escape && _dialogMode)
-                {
-                    ScannerForm.Close();
-                }
-                else
-                {
-                    TextController.HandleVirtualKey(modifiers, value);
-                }
+                Context.AppTalkWindowManager.CloseTalkWindow();
+            }
+            else if (key == Keys.Escape && _dialogMode)
+            {
+                ScannerForm.Close();
             }
             else
             {
-                // this is a command.
-                runCommand(value);
+                TextController.HandleVirtualKey(widgetAttribute.Modifiers, value);
             }
         }
 
@@ -924,7 +968,7 @@ namespace ACAT.Lib.Core.PanelManagement
             try
             {
                 var newState = _animationManager.GetPlayerState();
-                Log.Debug(ScannerForm.Name + ": PlayerState changed from " + e.OldState.ToString() + " to " + newState.ToString());
+                Log.Debug(ScannerForm.Name + ": PlayerState changed from " + e.OldState + " to " + newState);
                 switch (newState)
                 {
                     case PlayerState.Timeout:
@@ -955,9 +999,9 @@ namespace ACAT.Lib.Core.PanelManagement
             bool retVal = false;
             if (ScannerForm != null)
             {
-                retVal = new Rectangle(ScannerForm.Location.X, 
-                                        ScannerForm.Location.Y, 
-                                        ScannerForm.Width, 
+                retVal = new Rectangle(ScannerForm.Location.X,
+                                        ScannerForm.Location.Y,
+                                        ScannerForm.Width,
                                         ScannerForm.Height).Contains(x, y);
             }
 
@@ -974,10 +1018,12 @@ namespace ACAT.Lib.Core.PanelManagement
         /// <param name="e"></param>
         private void AppAgent_EvtTextChanged(object sender, EventArgs e)
         {
-            Log.Debug("Enter " + GetCurrentThreadId());
+            Log.Debug("Enter " + Kernel32Interop.GetCurrentThreadId());
             try
             {
-                if (Windows.GetVisible(ScannerForm) && Context.AppAgentMgr.CurrentEditingMode == EditingMode.TextEntry)
+                if (Windows.GetVisible(ScannerForm) &&
+                    !(ScannerForm is MenuPanelBase) &&
+                    Context.AppAgentMgr.CurrentEditingMode == EditingMode.TextEntry)
                 {
                     bool abbreviationDetected = false;
 
@@ -993,9 +1039,9 @@ namespace ACAT.Lib.Core.PanelManagement
 
                         if (!abbreviationDetected && !context.TextAgent().SupportsSpellCheck())
                         {
-                            Log.Debug("Calling spellccheck " + GetCurrentThreadId());
+                            Log.Debug("Calling spellccheck " + Kernel32Interop.GetCurrentThreadId());
                             TextController.SpellCheck();
-                            Log.Debug("Returned from spellccheck " + GetCurrentThreadId());
+                            Log.Debug("Returned from spellccheck " + Kernel32Interop.GetCurrentThreadId());
                         }
                     }
                 }
@@ -1005,7 +1051,34 @@ namespace ACAT.Lib.Core.PanelManagement
                 Log.Debug(ex.ToString());
             }
 
-            Log.Debug("Leave " + GetCurrentThreadId());
+            Log.Debug("Leave " + Kernel32Interop.GetCurrentThreadId());
+        }
+
+        /// <summary>
+        /// Event handler for when the display settings change (connect to a monitor etc)
+        /// </summary>
+        /// <param name="sender">event sender</param>
+        /// <param name="e">event args</param>
+        private void AppPanelManager_EvtDisplaySettingsChanged(object sender, EventArgs e)
+        {
+            if (ScannerForm.Visible)
+            {
+                PositionSizeController.ScaleForm();
+                PositionSizeController.SetPositionAndNotify();
+            }
+        }
+
+        /// <summary>
+        /// Event handler for JUST before the panel is displayed
+        /// </summary>
+        /// <param name="sender">event sender</param>
+        /// <param name="arg">event arg</param>
+        private void AppPanelManager_EvtPanelPreShow(object sender, PanelPreShowEventArg arg)
+        {
+            if (arg.Panel == _scannerPanel)
+            {
+                DisplayMode = arg.DisplayMode;
+            }
         }
 
         /// <summary>
@@ -1095,16 +1168,29 @@ namespace ACAT.Lib.Core.PanelManagement
         /// <param name="e">event args</param>
         private void form_VisibleChanged(object sender, EventArgs e)
         {
+            Log.Debug("Form Visibility for " + ScannerForm.Name + ":  " + ScannerForm.Visible);
+
             if (ScannerForm.Visible)
             {
-                Log.Debug("FormVisible " + ScannerForm.Name);
-                Log.Debug("Form: " + ScannerForm.Name + ", SUBSCRIBE EVTSCANNERHITTEST");
                 Context.AppAgentMgr.EvtScannerHitTest += AppAgent_EvtScannerHitTest;
+
+                // the following two lines are crucial.  Since the form style has
+                // WS_EX_COMPOSITED for smooth rendering, there is a bug in
+                // windows where if the visibility of the form changes, the form
+                // doesn't display.  Everything is there, but the form itself doesn't
+                // paint.  To reproduce the bug:
+                // Display the alphabet scanner
+                // Change the desktop resolution
+                // Go to the main menu (or any other scanner)
+                // Go back to the alphabet scanner.  You will see only the border
+                // with nothing inside.  Changing the size of the scanner fixes this.
+                ScannerForm.Height += 1;
+                ScannerForm.Height -= 1;
+
                 notifyScannerShow();
             }
             else
             {
-                Log.Debug("Form: " + ScannerForm.Name + ", UNSUBSCRIBE EVTSCANNERHITTEST");
                 Context.AppAgentMgr.EvtScannerHitTest -= AppAgent_EvtScannerHitTest;
             }
         }
@@ -1145,12 +1231,12 @@ namespace ACAT.Lib.Core.PanelManagement
         /// </summary>
         /// <param name="configFileName">name of the animation file</param>
         /// <returns></returns>
-        private bool initAnimationManager(String configFileName)
+        private bool initAnimationManager(PanelConfigMapEntry panelConfigMapEntry)
         {
             bool retVal = true;
 
             _animationManager = new AnimationManager();
-            if (_animationManager.Init(configFileName))
+            if (_animationManager.Init(panelConfigMapEntry))
             {
                 _animationManager.EvtPlayerStateChanged += animationManager_EvtPlayerStateChanged;
             }
@@ -1168,14 +1254,15 @@ namespace ACAT.Lib.Core.PanelManagement
         /// Create the widget manager. Load all the widgets
         /// from the config file
         /// </summary>
-        /// <param name="configFileName">name of the animation file</param>
-        /// <returns></returns>
-        private bool initWidgetManager(String configFileName)
+        /// <param name="panelConfigMapEntry">config map entry for the panel</param>
+        /// <returns>true on success</returns>
+        private bool initWidgetManager(PanelConfigMapEntry panelConfigMapEntry)
         {
             _widgetManager = new WidgetManager(ScannerForm);
             _widgetManager.Layout.SetColorScheme(ColorSchemes.ScannerSchemeName);
             _widgetManager.Layout.SetDisabledButtonColorScheme(ColorSchemes.DisabledScannerButtonSchemeName);
-            bool retVal = _widgetManager.Initialize(configFileName);
+
+            bool retVal = _widgetManager.Initialize(panelConfigMapEntry.ConfigFileName);
             if (!retVal)
             {
                 Log.Error("Unable to initialize widget manager");
@@ -1186,8 +1273,8 @@ namespace ACAT.Lib.Core.PanelManagement
                 if (String.IsNullOrEmpty(_rootWidget.SubClass))
                 {
                     _rootWidget.SubClass = (ScannerForm is MenuPanelBase) ?
-                                            PanelClasses.PanelCategory.ContextualMenu.ToString() :
-                                            PanelClasses.PanelCategory.Scanner.ToString();
+                                            PanelCategory.Menu.ToString() :
+                                            PanelCategory.Scanner.ToString();
                 }
             }
 
@@ -1202,11 +1289,7 @@ namespace ACAT.Lib.Core.PanelManagement
         /// <param name="e">event args</param>
         private void Interpreter_EvtCloseNotify(object sender, InterpreterEventArgs e)
         {
-            ScannerForm.Invoke(new MethodInvoker(delegate
-                {
-                    Log.Debug("Calling close for " + ScannerForm.Name);
-                    ScannerForm.Close();
-                }));
+            Windows.CloseAsync(ScannerForm);
         }
 
         /// <summary>
@@ -1228,6 +1311,31 @@ namespace ACAT.Lib.Core.PanelManagement
         }
 
         /// <summary>
+        /// Event handler to show a scanner as popup
+        /// </summary>
+        /// <param name="sender">event sender</param>
+        /// <param name="e">event args</param>
+        private void Interpreter_EvtShowPopup(object sender, InterpreterEventArgs e)
+        {
+            if (e.Args.Count == 0)
+            {
+                return;
+            }
+
+            String scannerName = e.Args[0];
+            String title = (e.Args.Count > 1) ? e.Args[1] : string.Empty;
+
+            (ScannerForm).Invoke(new MethodInvoker(delegate
+            {
+                IPanel panel = Context.AppPanelManager.CreatePanel(scannerName, title) as IPanel;
+                if (panel != null)
+                {
+                    Context.AppPanelManager.ShowPopup(ScannerForm as IPanel, panel);
+                }
+            }));
+        }
+
+        /// <summary>
         /// The keystate of one of the modifier keys (shift, alt,
         /// ctrl or function) changed.  Update the scanner status bar
         /// </summary>
@@ -1245,6 +1353,20 @@ namespace ACAT.Lib.Core.PanelManagement
             {
                 var arg = new ScannerShowEventArg(_scannerPanel);
                 EvtScannerShow(_scannerPanel, arg);
+            }
+        }
+
+        /// <summary>
+        /// Restores the aspect ratio of the form to the one at
+        /// design time
+        /// </summary>
+        private void restoreAspectRatio()
+        {
+            float currentAspectRatio = (float)ScannerForm.ClientSize.Height / ScannerForm.ClientSize.Width;
+
+            if (_designTimeAspectRatio != 0.0f && currentAspectRatio != _designTimeAspectRatio)
+            {
+                ScannerForm.ClientSize = new Size(ScannerForm.ClientSize.Width, (int)(_designTimeAspectRatio * ScannerForm.ClientSize.Width));
             }
         }
 
@@ -1329,12 +1451,46 @@ namespace ACAT.Lib.Core.PanelManagement
         }
 
         /// <summary>
+        /// Handle visibility of scanner when it is paused
+        /// </summary>
+        /// <param name="mode">what to do?</param>
+        private void setDisplayStateOnPause(PauseDisplayMode mode)
+        {
+            if (mode == PauseDisplayMode.None)
+            {
+                return;
+            }
+
+            switch (mode)
+            {
+                case PauseDisplayMode.HideScanner:
+                    HideScanner();
+                    break;
+
+                case PauseDisplayMode.FadeScanner:
+                    FadeScanner();
+                    break;
+
+                case PauseDisplayMode.Default:
+                    if (Context.AppPanelManager.PreShowPanelDisplayMode == DisplayModeTypes.Popup)
+                    {
+                        FadeScanner();
+                    }
+                    else
+                    {
+                        HideScanner();
+                    }
+                    break;
+            }
+        }
+
+        /// <summary>
         /// Get all the widgets whose "enabled" property is set to
         /// contextual in the config file.  Decide the "enabled" state
         /// of these widgets depending on the context
         /// </summary>
         /// <param name="monitorInfo">Context info about active window</param>
-        private void SetWidgetEnabledStates(WindowActivityMonitorInfo monitorInfo)
+        private void setWidgetEnabledStates(WindowActivityMonitorInfo monitorInfo)
         {
             if (_syncLock.IsClosing())
             {
@@ -1348,17 +1504,16 @@ namespace ACAT.Lib.Core.PanelManagement
                 foreach (Widget widget in _rootWidget.WidgetLayout.ContextualWidgets)
                 {
                     ////Log.Debug("Widget: " + widget.Name + ", subclass: " + widget.SubClass);
-
-                    if (!String.IsNullOrEmpty(widget.SubClass))
+                    if (widget.IsCommand)
                     {
-                        var arg = new CheckEnabledArgs(monitorInfo, widget);
+                        var arg = new CommandEnabledArg(monitorInfo, widget.Command, widget);
                         if (!_syncLock.IsClosing())
                         {
-                            _scannerPanel.CheckWidgetEnabled(arg);
+                            _scannerPanel.CheckCommandEnabled(arg);
 
                             if (!arg.Handled)
                             {
-                                Context.AppAgentMgr.CheckWidgetEnabled(arg);
+                                Context.AppAgentMgr.CheckCommandEnabled(arg);
                             }
 
                             widget.Enabled = arg.Handled ? arg.Enabled : widget.DefaultEnabled;
@@ -1411,8 +1566,9 @@ namespace ACAT.Lib.Core.PanelManagement
 
             Context.AppAgentMgr.EvtTextChanged += AppAgent_EvtTextChanged;
 
-            GetAnimationManager().Interpreter.EvtCloseNotify += Interpreter_EvtCloseNotify;
-            GetAnimationManager().Interpreter.EvtRun += Interpreter_EvtRun;
+            AnimationManager.Interpreter.EvtCloseNotify += Interpreter_EvtCloseNotify;
+            AnimationManager.Interpreter.EvtRun += Interpreter_EvtRun;
+            AnimationManager.Interpreter.EvtShowPopup += Interpreter_EvtShowPopup;
 
             subscribeToButtonEvents();
         }
@@ -1424,7 +1580,7 @@ namespace ACAT.Lib.Core.PanelManagement
         /// <param name="text">text to convert</param>
         private void textToSpeech(String text)
         {
-            Log.Debug("about to speak text=" + text);
+            Log.Debug("Convert to speech. text=" + text);
             Context.AppTTSManager.ActiveEngine.Speak(text);
             AuditLog.Audit(new AuditEventTextToSpeech(Context.AppTTSManager.ActiveEngine.Descriptor.Name));
         }
@@ -1436,8 +1592,6 @@ namespace ACAT.Lib.Core.PanelManagement
         {
             Context.AppAgentMgr.EvtTextChanged -= AppAgent_EvtTextChanged;
 
-            Log.Debug("Form: " + ScannerForm.Name + ", UNSUBSCRIBE EVTSCANNERHITTEST");
-
             Context.AppAgentMgr.EvtScannerHitTest -= AppAgent_EvtScannerHitTest;
             Windows.EvtWindowPositionChanged -= Windows_EvtWindowPositionChanged;
             ScannerForm.Shown -= form_Shown;
@@ -1446,8 +1600,8 @@ namespace ACAT.Lib.Core.PanelManagement
 
             Context.AppTalkWindowManager.EvtTalkWindowCreated -= AppTalkWindowManager_EvtTalkWindowCreated;
 
-            GetAnimationManager().Interpreter.EvtCloseNotify -= Interpreter_EvtCloseNotify;
-            GetAnimationManager().Interpreter.EvtRun -= Interpreter_EvtRun;
+            AnimationManager.Interpreter.EvtCloseNotify -= Interpreter_EvtCloseNotify;
+            AnimationManager.Interpreter.EvtRun -= Interpreter_EvtRun;
 
             KeyStateTracker.EvtKeyStateChanged -= KeyStateTracker_EvtKeyStateChanged;
         }
@@ -1482,7 +1636,7 @@ namespace ACAT.Lib.Core.PanelManagement
         /// <param name="e">event args</param>
         private void widget_EvtActuated(object sender, WidgetEventArgs e)
         {
-            if (PreviewMode)
+            if (PreviewMode || _isPaused)
             {
                 return;
             }
@@ -1514,7 +1668,7 @@ namespace ACAT.Lib.Core.PanelManagement
         {
             try
             {
-                SetWidgetEnabledStates(monitorInfo);
+                setWidgetEnabledStates(monitorInfo);
             }
             catch
             {
@@ -1522,8 +1676,7 @@ namespace ACAT.Lib.Core.PanelManagement
         }
 
         /// <summary>
-        /// The window position of the scanner changed.  Set
-        /// the talk window position relative to the scanner.
+        /// The window position of the scanner changed.
         /// </summary>
         /// <param name="form">Scanner form</param>
         /// <param name="position">current position</param>

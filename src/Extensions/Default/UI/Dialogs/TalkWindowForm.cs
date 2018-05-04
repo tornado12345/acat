@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="TalkWindowForm.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,11 +18,6 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Drawing;
-using System.IO;
-using System.Windows.Forms;
 using ACAT.Lib.Core.AgentManagement;
 using ACAT.Lib.Core.Audit;
 using ACAT.Lib.Core.PanelManagement;
@@ -31,41 +26,12 @@ using ACAT.Lib.Core.TTSManagement;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Core.WordPredictionManagement;
 using ACAT.Lib.Extension;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Drawing;
+using System.IO;
+using System.Windows.Forms;
+using ACAT.ACATResources;
+using ACAT.Lib.Core.Extensions;
 
 namespace ACAT.Extensions.Default.UI.Dialogs
 {
@@ -78,9 +44,15 @@ namespace ACAT.Extensions.Default.UI.Dialogs
     /// </summary>
     [DescriptorAttribute("BF1C93D7-3962-4A52-A56D-668149D116AE",
                         "TalkWindowForm",
-                        "Talk Window")]
+                        "ACAT Talk Window")]
     public partial class TalkWindowForm : TalkWindowBase
     {
+        /// <summary>
+        /// Name of the bitmap to display in the top left
+        /// corner of the talk window
+        /// </summary>
+        private const String _talkWindowIconBitmap = "talkwindowicon.png";
+
         /// <summary>
         /// Font to use for the speaker icon
         /// </summary>
@@ -136,7 +108,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
             get
             {
                 var retVal = String.Empty;
-                Invoke(new MethodInvoker(delegate()
+                Invoke(new MethodInvoker(delegate
                 {
                     retVal = textBox.Text;
                 }));
@@ -146,7 +118,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
 
             set
             {
-                Invoke(new MethodInvoker(delegate()
+                Invoke(new MethodInvoker(delegate
                 {
                     textBox.Text = value;
                     if (String.IsNullOrEmpty(value))
@@ -175,10 +147,10 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// </summary>
         public override void Clear()
         {
-            Invoke(new MethodInvoker(delegate()
-                {
+            Invoke(new MethodInvoker(delegate 
+            {
                     textBox.Text = String.Empty;
-                }));
+            }));
         }
 
         /// <summary>
@@ -223,7 +195,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         private void _cursorPosTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             cursorPosTimer.Stop();
-            Invoke(new MethodInvoker(delegate()
+            Invoke(new MethodInvoker(delegate
             {
                 textBox.Select(textBox.Text.Length, 0);
                 textBox.ScrollToCaret();
@@ -239,7 +211,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// <param name="e">event args</param>
         private void ActiveEngine_EvtPropertyChanged(object sender, EventArgs e)
         {
-            Invoke(new MethodInvoker(delegate()
+            Invoke(new MethodInvoker(delegate
             {
                 updateVolumeStatus();
             }));
@@ -293,9 +265,16 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         private async void handlePhraseSpeak()
         {
             notifyRequestClose();
-            IApplicationAgent agent = Context.AppAgentMgr.GetAgentByName("Phrase Speak Agent");
+            IApplicationAgent agent = Context.AppAgentMgr.GetAgentByCategory("PhraseSpeakAgent");
             if (agent != null)
             {
+                if (agent is IExtension)
+                {
+                    var invoker = agent.GetInvoker();
+                    invoker.SetValue("EnableSearch", true);
+                    invoker.SetValue("PhraseListEdit", false);
+                }
+
                 await Context.AppAgentMgr.ActivateAgent(agent as IFunctionalAgent);
             }
         }
@@ -331,14 +310,15 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         }
 
         /// <summary>
-        /// Sets the intel logo on the talk window
+        /// Displays an optional icon in the top left corner
+        /// of the talk window
         /// </summary>
         private void setIcon()
         {
-            var intelIcon = FileUtils.GetImagePath("Intel-logo.png");
-            if (File.Exists(intelIcon))
+            var talkWindowIcon = FileUtils.GetImagePath(_talkWindowIconBitmap);
+            if (File.Exists(talkWindowIcon))
             {
-                var image = Image.FromFile(FileUtils.GetImagePath("Intel-logo.png"));
+                var image = Image.FromFile(FileUtils.GetImagePath(_talkWindowIconBitmap));
                 image = ImageUtils.ImageResize(image, toolStripLabelIcon.Width, toolStripLabelIcon.Height);
                 toolStripLabelIcon.ImageAlign = ContentAlignment.MiddleCenter;
                 toolStripLabelIcon.Image = image;
@@ -350,7 +330,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// </summary>
         private void subscribeToEvents()
         {
-            Log.Debug("yoyo subscribing to formclosing");
+            Log.Debug("subscribing to formclosing");
             Load += TalkWindowForm_Load;
             FormClosing += TalkWindowForm_FormClosing;
             VisibleChanged += TalkWindowForm_VisibleChanged;
@@ -382,7 +362,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
                 _acatFont.Dispose();
             }
 
-            TTSManager.Instance.ActiveEngine.EvtPropertyChanged -= new EventHandler(ActiveEngine_EvtPropertyChanged);
+            TTSManager.Instance.ActiveEngine.EvtPropertyChanged -= ActiveEngine_EvtPropertyChanged;
         }
 
         /// <summary>
@@ -407,6 +387,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
             setFont(FontSize);
             updateVolumeStatus();
             CenterToScreen();
+            Text = R.GetString("TalkWindow");
             _windowOverlapWatchdog = new WindowOverlapWatchdog(this);
             _windowActiveWatchdog = new WindowActiveWatchdog(this);
             textBox.SelectionStart = textBox.Text.Length;

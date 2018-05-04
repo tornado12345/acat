@@ -5,7 +5,7 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProductVersion>8.0.30703</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{0BDD954F-7F65-4EC1-97C2-8F4CBFE2C7A2}</ProjectGuid>
+    <ProjectGuid>{A1BBAF69-3C3D-4E90-9CD1-0A7E165691C5}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>ACAT.Extensions.Default.UI.Scanners</RootNamespace>
@@ -47,7 +47,7 @@
     <OutputPath>bin\x86\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <DebugType>full</DebugType>
-    <PlatformTarget>x86</PlatformTarget>
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
@@ -69,6 +69,10 @@
       <HintPath>..\..\..\..\Redistributable\ACATExtension.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="ACATResources">
+      <HintPath>..\..\..\..\Redistributable\ACATResources.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Speech" />
@@ -83,47 +87,11 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AlphabetScannerQwerty.cs">
+    <Compile Include="SwitchLanguageScanner.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="AlphabetScannerQwerty.Designer.cs">
-      <DependentUpon>AlphabetScannerQwerty.cs</DependentUpon>
-    </Compile>
-    <Compile Include="AlphabetScannerQwertyMinimal.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="AlphabetScannerQwertyMinimal.Designer.cs">
-      <DependentUpon>AlphabetScannerQwertyMinimal.cs</DependentUpon>
-    </Compile>
-    <Compile Include="AlphabetScannerAbc.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="AlphabetScannerAbc.Designer.cs">
-      <DependentUpon>AlphabetScannerAbc.cs</DependentUpon>
-    </Compile>
-    <Compile Include="AlphabetScannerAbcMinimal.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="AlphabetScannerAbcMinimal.Designer.cs">
-      <DependentUpon>AlphabetScannerAbcMinimal.cs</DependentUpon>
-    </Compile>
-    <Compile Include="TalkApplicationScannerAlphabetical.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="TalkApplicationScannerAlphabetical.Designer.cs">
-      <DependentUpon>TalkApplicationScannerAlphabetical.cs</DependentUpon>
-    </Compile>
-    <Compile Include="TalkApplicationScannerQwerty.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="TalkApplicationScannerQwerty.Designer.cs">
-      <DependentUpon>TalkApplicationScannerQwerty.cs</DependentUpon>
-    </Compile>
-    <Compile Include="PunctuationsScanner.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="PunctuationsScanner.Designer.cs">
-      <DependentUpon>PunctuationsScanner.cs</DependentUpon>
+    <Compile Include="SwitchLanguageScanner.designer.cs">
+      <DependentUpon>SwitchLanguageScanner.cs</DependentUpon>
     </Compile>
     <Compile Include="NumbersScanner.cs">
       <SubType>Form</SubType>
@@ -170,32 +138,9 @@
     <Service Include="{94E38DFF-614B-4cbd-B67C-F211BB35CE8B}" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="AlphabetScannerQwerty.resx">
+    <EmbeddedResource Include="SwitchLanguageScanner.resx">
       <Generator>ResXFileCodeGeneratorEx</Generator>
-      <DependentUpon>AlphabetScannerQwerty.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="AlphabetScannerQwertyMinimal.resx">
-      <Generator>ResXFileCodeGeneratorEx</Generator>
-      <DependentUpon>AlphabetScannerQwertyMinimal.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="AlphabetScannerAbc.resx">
-      <Generator>ResXFileCodeGeneratorEx</Generator>
-      <DependentUpon>AlphabetScannerAbc.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="AlphabetScannerAbcMinimal.resx">
-      <Generator>ResXFileCodeGeneratorEx</Generator>
-      <DependentUpon>AlphabetScannerAbcMinimal.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="TalkApplicationScannerAlphabetical.resx">
-      <Generator>ResXFileCodeGeneratorEx</Generator>
-      <DependentUpon>TalkApplicationScannerAlphabetical.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="TalkApplicationScannerQwerty.resx">
-      <Generator>ResXFileCodeGeneratorEx</Generator>
-      <DependentUpon>TalkApplicationScannerQwerty.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="PunctuationsScanner.resx">
-      <DependentUpon>PunctuationsScanner.cs</DependentUpon>
+      <DependentUpon>SwitchLanguageScanner.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="NumbersScanner.resx">
       <DependentUpon>NumbersScanner.cs</DependentUpon>
@@ -230,50 +175,6 @@
       <Isolated>False</Isolated>
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </COMReference>
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="Config\AlphabetScannerQwerty.xml">
-      <SubType>Designer</SubType>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Config\AlphabetScannerQwertyMinimal.xml">
-      <SubType>Designer</SubType>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Config\AlphabetScannerAbc.xml">
-      <SubType>Designer</SubType>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Config\AlphabetScannerAbcMinimal.xml">
-      <SubType>Designer</SubType>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Config\TalkApplicationScannerAlphabetical.xml">
-      <SubType>Designer</SubType>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Config\TalkApplicationScannerQwerty.xml">
-      <SubType>Designer</SubType>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Config\PunctuationsScanner.xml">
-      <SubType>Designer</SubType>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Config\NumbersScanner.xml" />
-    <Content Include="Config\MouseScanner.xml" />
-    <Content Include="Config\FunctionKeyScanner.xml" />
-    <Content Include="Config\CursorNavigationScanner.xml">
-      <SubType>Designer</SubType>
-    </Content>
-    <Content Include="Config\PanelConfigMap.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      <SubType>Designer</SubType>
-    </Content>
-    <Content Include="Config\YesNoScanner.xml">
-      <SubType>Designer</SubType>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

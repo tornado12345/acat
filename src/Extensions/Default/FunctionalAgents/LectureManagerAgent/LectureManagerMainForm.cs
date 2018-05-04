@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="LectureManagerMainForm.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,64 +18,26 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-#define USE_INTERVAL_TABLE
-
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Drawing;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.Audit;
 using ACAT.Lib.Core.Extensions;
 using ACAT.Lib.Core.PanelManagement;
 using ACAT.Lib.Core.TTSManagement;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Extension;
-using Microsoft.Office.Interop.Word;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
+using System.Windows.Forms;
 using Font = System.Drawing.Font;
 using Point = System.Drawing.Point;
 using Rectangle = System.Drawing.Rectangle;
 using Task = System.Threading.Tasks.Task;
 using Windows = ACAT.Lib.Core.Utility.Windows;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
 
 namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
 {
@@ -97,8 +59,13 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
     [Descriptor("1E19F5C8-548B-4B9F-AF5F-984DA001C3C3",
                 "LectureManagerMainForm",
                 "Lecture Manager Main Form")]
-    public partial class LectureManagerMainForm : Form, IExtension, IPanel
+    public partial class LectureManagerMainForm : IExtension, IPanel
     {
+        /// <summary>
+        /// Pause time between paras in the speak all mode
+        /// </summary>
+        public const int LectureManagerSpeakAllParagraphPause = 4000;
+
         /// <summary>
         /// Windows constant
         /// </summary>
@@ -121,19 +88,36 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
         private const int WS_SYSMENU = 0x80000;
 
         /// <summary>
+        /// The extension invoker object
+        /// </summary>
+        private readonly ExtensionInvoker _invoker;
+
+        /// <summary>
+        /// Length of time to wait between paras when
+        /// speaking the text in its entirety
+        /// </summary>
+        private readonly Timer _speakAllParagraphTimer;
+
+        /// <summary>
+        /// Used for synchronization
+        /// </summary>
+        private readonly SyncLock _syncObj;
+
+        /// <summary>
         /// Reads text from a text/word file
         /// </summary>
-        private TextDocumentReader _textDocumentReader;
+        private readonly TextDocumentReader _textDocumentReader;
+
+        /// <summary>
+        /// List of abbreviations to look for.  If a period follows any
+        /// of these words, don't treat it as a sentence terminator.
+        /// </summary>
+        private readonly string[] abbreviations = { "dr", "mr", "prof", "mrs", "st", "etc" };
 
         /// <summary>
         /// Has the loading completed?
         /// </summary>
         private bool _formLoadComplete;
-
-        /// <summary>
-        /// The extension invoker object
-        /// </summary>
-        private ExtensionInvoker _invoker;
 
         /// <summary>
         /// The last sentence that was converted to speech
@@ -156,25 +140,19 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
         private bool _paused;
 
         /// <summary>
+        /// In case of error, retry the sentence
+        /// </summary>
+        private bool _retrySentence = false;
+
+        /// <summary>
         /// List onf sentences in the parsed text
         /// </summary>
         private List<Sentence> _sentences;
 
         /// <summary>
-        /// Length of time to wait between paras when
-        /// speaking the text in its entirety
+        /// Current state of lecture manager
         /// </summary>
-        private Timer _speakAllParagraphTimer;
-
-        /// <summary>
-        /// Are we speaking now?
-        /// </summary>
-        private bool _speaking;
-
-        /// <summary>
-        /// Used for synchronization
-        /// </summary>
-        private SyncLock _syncObj;
+        private SpeakState _speakState;
 
         /// <summary>
         /// Height of the text font
@@ -185,12 +163,6 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
         /// Makes sure the window stays active
         /// </summary>
         private WindowActiveWatchdog _windowActiveWatchdog;
-
-        /// <summary>
-        /// List of abbreviations to look for.  If a period follows any
-        /// of these words, don't treat it as a sentence terminator.
-        /// </summary>
-        private String[] abbreviations = new String[] { "dr", "mr", "prof", "mrs", "st", "etc" };
 
         /// <summary>
         /// Initializes a new instance of the class.
@@ -216,6 +188,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
             _speakAllParagraphTimer = new Timer();
             _speakAllParagraphTimer.Tick += _speakAllParagraphTimer_Tick;
             LocationChanged += LectureManagerMainForm_LocationChanged;
+            Windows.EvtWindowPositionChanged += Windows_EvtWindowPositionChanged;
         }
 
         /// <summary>
@@ -237,6 +210,16 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
             Vertical,
             Horizontal,
             Both
+        }
+
+        /// <summary>
+        /// Possible states of the lecture manager
+        /// </summary>
+        private enum SpeakState
+        {
+            None,
+            Speaking,
+            Error
         }
 
         /// <summary>
@@ -294,6 +277,11 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
         }
 
         /// <summary>
+        /// Gets the PanelCommon object
+        /// </summary>
+        public IPanelCommon PanelCommon { get { return null; } }
+
+        /// <summary>
         /// Gets or sets whether speaking is
         /// in progress
         /// </summary>
@@ -301,12 +289,13 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
         {
             get
             {
-                return _speaking;
+                return _speakState == SpeakState.Speaking;
             }
 
             set
             {
-                _speaking = value;
+                _speakState = (value) ? SpeakState.Speaking : SpeakState.None;
+
                 if (_formLoadComplete)
                 {
                     updateStatusField();
@@ -360,6 +349,11 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
                 setCaretPosAndSelect(0);
                 _lastSentenceSpoken = null;
             }
+        }
+
+        public bool Initialize(StartupArg startupArg)
+        {
+            return true;
         }
 
         /// <summary>
@@ -431,24 +425,6 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
         }
 
         /// <summary>
-        /// Exit lecture manager after user confirmation
-        /// </summary>
-        public void ProcessExit()
-        {
-            if (LectureManagerAgent.Confirm("Close Lecture Manager?"))
-            {
-                StopSpeaking();
-
-                removeWatchdogs();
-
-                EnumWindows.RestoreFocusToTopWindow();
-                WindowActivityMonitor.GetActiveWindow();
-
-                this.Close();
-            }
-        }
-
-        /// <summary>
         /// Read the entire text to speech
         /// </summary>
         public void ProcessReadAllSpeech()
@@ -511,9 +487,14 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
         /// <param name="e"></param>
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
+            removeWatchdogs();
+
             _syncObj.Status = SyncLock.StatusValues.Closing;
+
             TTSManager.Instance.ActiveEngine.EvtBookmarkReached -= ActiveEngine_EvtBookmarkReached;
             PanelManager.Instance.EvtScannerShow -= Instance_EvtScannerShow;
+            Windows.EvtWindowPositionChanged -= Windows_EvtWindowPositionChanged;
+
             base.OnFormClosing(e);
         }
 
@@ -703,6 +684,10 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
         /// <param name="e">event args</param>
         private void frmMain_Load(object sender, EventArgs e)
         {
+            Text = R.GetString("LectureManager");
+
+            _speakState = SpeakState.None;
+
             var list = new List<Control> { tableLayoutPanel1, panel1 };
             centerControls(list, MoveDirection.Vertical);
 
@@ -751,7 +736,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
             var words = getWords(sentence);
             if (words.Any())
             {
-                retVal = words[words.Count() - 1];
+                retVal = words[words.Count - 1];
             }
 
             return retVal;
@@ -809,7 +794,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
             {
                 foreach (Paragraph para in _paragraphs)
                 {
-                    if (selectionStart == para.Start && para.Sentences.Count() > 0)
+                    if (selectionStart == para.Start && para.Sentences.Any())
                     {
                         return para.Sentences[0];
                     }
@@ -850,7 +835,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
         /// <returns>para object, null if already at the top</returns>
         private Paragraph getPreviousPara()
         {
-            for (int ii = _paragraphs.Count() - 1; ii >= 0; ii--)
+            for (int ii = _paragraphs.Count - 1; ii >= 0; ii--)
             {
                 if (_paragraphs[ii].Start < textBox1.SelectionStart)
                 {
@@ -867,7 +852,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
         /// <returns>sentence object</returns>
         private Sentence getPreviousSentence()
         {
-            for (int ii = _sentences.Count() - 1; ii >= 0; ii--)
+            for (int ii = _sentences.Count - 1; ii >= 0; ii--)
             {
                 if (_sentences[ii].Start < textBox1.SelectionStart)
                 {
@@ -906,10 +891,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
         /// </summary>
         /// <param name="speechText">speech text</param>
         /// <returns>interval in ms</returns>
-#if USE_INTERVAL_TABLE         
         private int getSpeechTimerInterval(string speechText)
         {
-            int speechInterval = 0;
+            int speechInterval;
 
             if (speechText.Length > 160)
             {
@@ -931,13 +915,6 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
             Log.Debug("speechInterval=" + speechInterval.ToString());
             return speechInterval;
         }
-#else
-        private int getSpeechTimerInterval(string speechText)
-        {
-            int MS_PER_CHAR = 175;
-            return speechText.Length * MS_PER_CHAR;
-        }
-#endif
 
         /// <summary>
         /// Splits the specified string into words
@@ -1041,7 +1018,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
         /// Dock this form to the scanner
         /// </summary>
         /// <param name="sender">event sender</param>
-        /// <param name="e">event args</param>
+        /// <param name="arg">event args</param>
         private void Instance_EvtScannerShow(object sender, ScannerShowEventArg arg)
         {
             if (arg.Scanner != this)
@@ -1155,17 +1132,17 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
         /// <param name="index">bookmark index</param>
         private void OnIndexReached(int index)
         {
-            Log.Debug("OnIndexReached() - index=" + index.ToString());
+            Log.Debug("OnIndexReached() - index=" + index);
 
             switch (Mode)
             {
                 case SpeechMode.All:
                     if (isLastSentence(_lastSentenceSpoken) &&
-                            Common.AppPreferences.LectureManagerSpeakAllParagraphPause > 0)
+                            LectureManagerSpeakAllParagraphPause > 0)
                     {
-                        Invoke(new MethodInvoker(delegate()
+                        Invoke(new MethodInvoker(delegate
                             {
-                                _speakAllParagraphTimer.Interval = Common.AppPreferences.LectureManagerSpeakAllParagraphPause;
+                                _speakAllParagraphTimer.Interval = LectureManagerSpeakAllParagraphPause;
                                 _speakAllParagraphTimer.Start();
                             }));
                     }
@@ -1205,7 +1182,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
 
             var text = textBox1.Text;
 
-            for (int ii = 0; ii < text.Length; )
+            for (int ii = 0; ii < text.Length;)
             {
                 ii = gotoNextPara(text, ii);
 
@@ -1218,7 +1195,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
                 ii = parseSentences(para, text, ii);
                 if (para.Sentences.Any())
                 {
-                    var lastSentence = para.Sentences[para.Sentences.Count() - 1];
+                    var lastSentence = para.Sentences[para.Sentences.Count - 1];
                     int lastSentenceEndOffset = lastSentence.Start + lastSentence.Length;
                     para.Length = lastSentenceEndOffset - para.Start;
 
@@ -1242,7 +1219,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
         /// </summary>
         private void parseAndDisplayText()
         {
-            Invoke(new MethodInvoker(delegate()
+            Invoke(new MethodInvoker(delegate
             {
                 textBox1.Text = LectureText;
                 textBox1.Select(0, 0);
@@ -1266,7 +1243,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
         private int parseSentences(Paragraph para, String text, int index)
         {
             int ii;
-            for (ii = index; ii < text.Length; )
+            for (ii = index; ii < text.Length;)
             {
                 if (isParagraphTerminator(text[ii]))
                 {
@@ -1336,7 +1313,6 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
                 Log.Debug("REACHED END OF PARAGRAPH!");
                 Speaking = false;
                 textBox1.Focus();
-                return;
             }
             else
             {
@@ -1414,9 +1390,12 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
         /// Sends the specified text to the TTS engine
         /// </summary>
         /// <param name="speechText">text to send</param>
-        private void SendTextImmediate(string speechText)
+        private bool SendTextImmediate(string speechText)
         {
             Log.Debug("Entering...speechText>>>" + speechText + "<<<");
+
+            bool retVal = true;
+
             if (!string.IsNullOrEmpty(speechText) && !speechText.Equals("\r\n\r\n"))
             {
                 speechTimer.Interval = getSpeechTimerInterval(speechText);
@@ -1426,20 +1405,36 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
                 if (Common.AppPreferences.TTSUseBookmarks)
                 {
                     int bookmark;
-                    TTSManager.Instance.ActiveEngine.SpeakAsync(speechText, out bookmark);
+                    retVal = TTSManager.Instance.ActiveEngine.SpeakAsync(speechText, out bookmark);
                 }
                 else
                 {
-                    TTSManager.Instance.ActiveEngine.Speak(speechText);
-                    AuditLog.Audit(new AuditEventTextToSpeech(TTSManager.Instance.ActiveEngine.Descriptor.Name));
-                    Log.Debug("starting speechTimer...");
-                    speechTimer.Start();
+                    retVal = TTSManager.Instance.ActiveEngine.Speak(speechText);
+                    if (retVal)
+                    {
+                        AuditLog.Audit(new AuditEventTextToSpeech(TTSManager.Instance.ActiveEngine.Descriptor.Name));
+                        Log.Debug("starting speechTimer...");
+                        speechTimer.Start();
+                    }
                 }
             }
             else
             {
-                Log.Debug("no text to speak!");
+                Log.Debug("No text to speak!");
             }
+
+            if (!retVal)
+            {
+                _speakState = SpeakState.Error;
+                updateStatusField();
+                _retrySentence = true;
+            }
+            else
+            {
+                _retrySentence = false;
+            }
+
+            return retVal;
         }
 
         /// <summary>
@@ -1553,7 +1548,16 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
         private Sentence speakNextSentence()
         {
             _paused = false;
-            var sentence = getNextSentenceToSpeak();
+
+            Sentence sentence;
+            if (_retrySentence && _lastSentenceSpoken != null)
+            {
+                sentence = _lastSentenceSpoken;
+            }
+            else
+            {
+                sentence = getNextSentenceToSpeak();
+            }
 
             if (sentence != null)
             {
@@ -1572,6 +1576,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
             }
 
             _lastSentenceSpoken = null;
+
             return _lastSentenceSpoken;
         }
 
@@ -1630,33 +1635,51 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
             {
                 String status = String.Empty;
 
-                if (_speaking)
+                if (Speaking)
                 {
                     switch (Mode)
                     {
                         case SpeechMode.Paragraph:
-                            status = "SPEAKING PARAGRAPH";
+                            status = R.GetString("SpeakingPara");
                             break;
 
                         case SpeechMode.All:
-                            status = "SPEAKING ALL";
+                            status = R.GetString("SpeakingAll");
                             break;
 
                         case SpeechMode.Sentence:
-                            status = "SPEAKING SENTENCE";
+                            status = R.GetString("SpeakingSentence");
                             break;
 
                         default:
-                            status = "SPEAKING";
+                            status = R.GetString("Speaking");
                             break;
                     }
                 }
+                else if (_speakState == SpeakState.Error)
+                {
+                    status = R.GetString("SpeakError");
+                }
                 else if (_paused)
                 {
-                    status = "PAUSED";
+                    status = R.GetString("LMPaused");
                 }
 
                 Windows.SetText(lblStatus, status);
+            }
+        }
+
+        /// <summary>
+        /// Position of the scanner changed.  If there is a companion
+        /// scanner, dock to it
+        /// </summary>
+        /// <param name="form">the form</param>
+        /// <param name="position">its position</param>
+        private void Windows_EvtWindowPositionChanged(Form form, Windows.WindowPosition position)
+        {
+            if (form != this)
+            {
+                positionForm(form);
             }
         }
 
@@ -1772,7 +1795,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
             /// <returns>true if it is</returns>
             public bool isLastSentence(Sentence sentence)
             {
-                return Sentences.Any() && Sentences[Sentences.Count() - 1] == sentence;
+                return Sentences.Any() && Sentences[Sentences.Count - 1] == sentence;
             }
         }
 

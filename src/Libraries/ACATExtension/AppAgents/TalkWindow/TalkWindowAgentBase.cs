@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="TalkWindowAgentBase.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,72 +18,31 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Security.Permissions;
-using System.Windows.Automation;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.AgentManagement;
 using ACAT.Lib.Core.AgentManagement.TextInterface;
 using ACAT.Lib.Core.PanelManagement;
 using ACAT.Lib.Core.TalkWindowManagement;
 using ACAT.Lib.Core.Utility;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Collections.Generic;
+using System.Security.Permissions;
+using System.Windows.Automation;
+using System.Windows.Forms;
 
 namespace ACAT.Lib.Extension.AppAgents.TalkWindow
 {
     /// <summary>
     /// The agent for the Talk Window. Handles Talkwindow
     /// contextual menu functions such as zoomin, zoomout, websearch,
-    /// wikipedia search, 
+    /// wikipedia search,
     /// </summary>
     public class TalkWindowAgentBase : AgentBase
     {
         /// <summary>
         /// Title for the talk window contextual menu
         /// </summary>
-        private const string ContextMenuTitle = "Talk Window";
-
-        /// <summary>
-        /// Name of the executing assembly
-        /// </summary>
-        private readonly String _currentProcessName;
+        private readonly string ContextMenuTitle = R.GetString("TalkWindow");
 
         /// <summary>
         /// Has the scanner for the talk window been displayed?
@@ -97,21 +56,16 @@ namespace ACAT.Lib.Extension.AppAgents.TalkWindow
         private TextControlAgentBase _textInterface;
 
         /// <summary>
-        /// Does the text-to-speech engine support escape
-        /// sequences for control? These can be typed into
-        /// the talk window and sent directly to the speech engine
-        /// </summary>
-        private bool _ttsEngineSupportsSpeechControl;
-
-        /// <summary>
         /// Initializes a new instance of the class.
         /// </summary>
         public TalkWindowAgentBase()
         {
-            _currentProcessName = Process.GetCurrentProcess().ProcessName.ToLower();
-
-            Context.AppTalkWindowManager.EvtTalkWindowVisibilityChanged += AppTalkWindowManager_EvtTalkWindowVisibilityChanged;
-            Context.AppTalkWindowManager.EvtTalkWindowClosed += AppTalkWindowManager_EvtTalkWindowClosed;
+            if (Context.AppTalkWindowManager != null)
+            {
+                Context.AppTalkWindowManager.EvtTalkWindowVisibilityChanged +=
+                    AppTalkWindowManager_EvtTalkWindowVisibilityChanged;
+                Context.AppTalkWindowManager.EvtTalkWindowClosed += AppTalkWindowManager_EvtTalkWindowClosed;
+            }
         }
 
         /// <summary>
@@ -119,7 +73,6 @@ namespace ACAT.Lib.Extension.AppAgents.TalkWindow
         /// </summary>
         public override IEnumerable<AgentProcessInfo> ProcessesSupported
         {
-            //get { return new[] { new AgentProcessInfo(_currentProcessName) }; }
             get { return new List<AgentProcessInfo>(); }
         }
 
@@ -128,42 +81,31 @@ namespace ACAT.Lib.Extension.AppAgents.TalkWindow
         /// will depend on the current context.
         /// </summary>
         /// <param name="arg">contains info about the widget</param>
-        public override void CheckWidgetEnabled(CheckEnabledArgs arg)
+        public override void CheckCommandEnabled(CommandEnabledArg arg)
         {
             arg.Handled = true;
-            switch (arg.Widget.SubClass)
+            switch (arg.Command)
             {
-                case "ShowWindowPosSizeMenu":
+                case "CmdWindowPosSizeMenu":
                     arg.Enabled = !Context.AppTalkWindowManager.IsTalkWindowVisible;
                     arg.Handled = true;
                     break;
 
-                case "ClearTalkWindowText":
+                case "CmdTalkWindowClear":
                     arg.Enabled = !Context.AppTalkWindowManager.IsTalkWindowEmpty();
                     break;
 
-                case "ContextualMenu":
+                case "CmdContextMenu":
                     arg.Enabled = true;
                     break;
 
-                case "SpeechControl":
-                    if (_ttsEngineSupportsSpeechControl)
-                    {
-                        String word;
-                        TextControlAgent.GetWordAtCaret(out word);
-                        object ret = Context.AppTTSManager.ActiveEngine.GetInvoker().InvokeExtensionMethod("IsValidSpeechControlSequence", word);
-                        if (ret is bool)
-                        {
-                            arg.Enabled = (bool)ret;
-                        }
-                    }
-
-                    break;
-
-                case "QuickSearch":
                 case "GoogleSearch":
                 case "WikiSearch":
                     arg.Enabled = !String.IsNullOrEmpty(getTalkWindowSelectedTextOrPara().Trim());
+                    break;
+
+                case "CmdUndo":
+                    arg.Enabled = false;
                     break;
 
                 default:
@@ -197,15 +139,9 @@ namespace ACAT.Lib.Extension.AppAgents.TalkWindow
         {
             Log.Debug();
 
-            _ttsEngineSupportsSpeechControl = false;
-
             if (Context.AppTalkWindowManager.IsTalkWindowVisible &&
                     (monitorInfo.IsNewFocusedElement || monitorInfo.IsNewWindow))
             {
-                var invoker = Context.AppTTSManager.ActiveEngine.GetInvoker();
-                _ttsEngineSupportsSpeechControl = invoker.SupportsMethod("SpeechControl") &&
-                                                    invoker.SupportsMethod("IsValidSpeechControlSequence");
-
                 var automationElement = getTalkTextWinAutomationElement();
                 if (automationElement != null)
                 {
@@ -258,9 +194,8 @@ namespace ACAT.Lib.Extension.AppAgents.TalkWindow
                     break;
 
                 case "TalkWindowSaveZoom":
-                    if (DialogUtils.ConfirmScanner("Save Font Setting?"))
+                    if (DialogUtils.ConfirmScanner(R.GetString("SaveFontSetting")))
                     {
-
                         var prefs = ACATPreferences.Load();
                         prefs.TalkWindowFontSize = Context.AppTalkWindowManager.FontSize;
                         prefs.Save();
@@ -274,7 +209,7 @@ namespace ACAT.Lib.Extension.AppAgents.TalkWindow
                         String text = Context.AppTalkWindowManager.TalkWindowText;
                         if (!String.IsNullOrEmpty(text))
                         {
-                            if (DialogUtils.ConfirmScanner("Clear Talk Window?"))
+                            if (DialogUtils.ConfirmScanner(R.GetString("ClearTalkWindow")))
                             {
                                 Context.AppTalkWindowManager.Clear();
                             }

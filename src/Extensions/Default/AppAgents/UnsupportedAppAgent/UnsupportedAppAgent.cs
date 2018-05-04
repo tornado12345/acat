@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="UnsupportedAppAgent.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -65,8 +65,8 @@ namespace ACAT.Lib.Core.Extensions.Base.AppAgents.GenericApp
     /// Override functions as required customize
     /// </summary>
     [DescriptorAttribute("8CFBC12A-6CC4-4751-ABB5-3A7172500569", 
-                            "Unsupported App Agent", 
-                            "App Agent unsupported applications")]
+                            "Unsupported App Agent",
+                            "Manages interactions with applications that are not supported by ACAT")]
     internal class UnsupportedAppAgent : GenericAppAgent
     {
     }

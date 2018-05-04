@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="Windows.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -36,8 +37,17 @@ namespace ACAT.Lib.Core.Utility
     /// </summary>
     public class Windows
     {
+        private const int GCL_HICON = -14;
+        private const int GCL_HICONSM = -34;
         private const int GWL_STYLE = (-16);
+        private const int ICON_BIG = 1;
+        private const int ICON_SMALL = 0;
+        private const int ICON_SMALL2 = 2;
+        private const int WM_GETICON = 0x7F;
         private static String _taskbarWinClass = "Shell_TrayWnd";
+        private static float _dpiX = 0.0f;
+
+        private static WindowsVersion _windowsVersion = WindowsVersion.Unknown;
 
         public delegate void FadeInComplete(Form form);
 
@@ -146,6 +156,28 @@ namespace ACAT.Lib.Core.Utility
         }
 
         /// <summary>
+        /// Enum used by DwmGetWindowAttribute
+        /// </summary>
+        private enum DWMWINDOWATTRIBUTE : uint
+        {
+            NCRenderingEnabled = 1,
+            NCRenderingPolicy,
+            TransitionsForceDisabled,
+            AllowNCPaint,
+            CaptionButtonBounds,
+            NonClientRtlLayout,
+            ForceIconicRepresentation,
+            Flip3DPolicy,
+            ExtendedFrameBounds,
+            HasIconicBitmap,
+            DisallowPeek,
+            ExceludedFromPeek,
+            Cloak,
+            Cloaked,
+            FreezeRepresentation
+        }
+
+        /// <summary>
         /// Activates the specified form
         /// </summary>
         /// <param name="form">form to activate</param>
@@ -184,12 +216,6 @@ namespace ACAT.Lib.Core.Utility
         /// <returns>true on success</returns>
         public static bool ActivateWindow(IntPtr handle)
         {
-            if (IsDesktopWindow(handle))
-            {
-                Shell32.Shell shell = new Shell32.Shell();
-                shell.ToggleDesktop();
-                return true;
-            }
             int style = User32Interop.GetWindowLong(handle, User32Interop.GWL_STYLE);
             if ((style & User32Interop.WS_MAXIMIZE) == User32Interop.WS_MAXIMIZE)
             {
@@ -272,7 +298,7 @@ namespace ACAT.Lib.Core.Utility
         /// <param name="form">form to dock</param>
         /// <param name="scanner">scanner form to dock to</param>
         /// <param name="scannerPosition">relative position</param>
-        public static void DockWithScanner(Form form, Form scanner, WindowPosition scannerPosition)
+        public static void DockWithScanner(Form form, Form scanner, WindowPosition scannerPosition, bool repositionTop = true)
         {
             if (form == scanner)
             {
@@ -282,27 +308,31 @@ namespace ACAT.Lib.Core.Utility
             switch (scannerPosition)
             {
                 case WindowPosition.TopRight:
-                    form.Location = new Point(scanner.Left - form.Width, scanner.Top);
+                    form.Location = new Point(scanner.Left - form.Width, (repositionTop) ? scanner.Top : form.Top);
                     break;
 
                 case WindowPosition.TopLeft:
-                    form.Location = new Point(scanner.Left + scanner.Width, scanner.Top);
+                    form.Location = new Point(scanner.Left + scanner.Width, (repositionTop) ? scanner.Top : form.Top);
                     break;
 
                 case WindowPosition.BottomLeft:
-                    form.Location = new Point(scanner.Left + scanner.Width, Screen.PrimaryScreen.WorkingArea.Height - form.Height);
+                    form.Location = new Point(scanner.Left + scanner.Width,
+                                        (repositionTop) ? Screen.PrimaryScreen.WorkingArea.Height - form.Height : form.Top);
                     break;
 
                 case WindowPosition.BottomRight:
-                    form.Location = new Point(scanner.Left - form.Width, Screen.PrimaryScreen.WorkingArea.Height - form.Height);
+                    form.Location = new Point(scanner.Left - form.Width,
+                                        (repositionTop) ? Screen.PrimaryScreen.WorkingArea.Height - form.Height : form.Top);
                     break;
 
                 case WindowPosition.MiddleRight:
-                    form.Location = new Point(scanner.Left - form.Width, (Screen.PrimaryScreen.WorkingArea.Height - form.Height) / 2);
+                    form.Location = new Point(scanner.Left - form.Width,
+                                        (repositionTop) ? (Screen.PrimaryScreen.WorkingArea.Height - form.Height)/2 : form.Top);
                     break;
 
                 case WindowPosition.MiddleLeft:
-                    form.Location = new Point(scanner.Width, (Screen.PrimaryScreen.WorkingArea.Height - form.Height) / 2);
+                    form.Location = new Point(scanner.Width, 
+                                        (repositionTop) ? (Screen.PrimaryScreen.WorkingArea.Height - form.Height)/2 : form.Top);
                     break;
             }
         }
@@ -376,6 +406,47 @@ namespace ACAT.Lib.Core.Utility
         }
 
         /// <summary>
+        /// Gets the icon associated with the specified window
+        /// </summary>
+        /// <param name="winHandle">window handle</param>
+        /// <returns>the icon, null if it can't find one</returns>
+        public static Icon GetAppIcon(IntPtr winHandle)
+        {
+            Log.Debug("hWnd=" + winHandle);
+
+            IntPtr hIcon = User32Interop.SendMessage(winHandle, WM_GETICON, ICON_BIG, 0);
+
+            if (hIcon == IntPtr.Zero)
+            {
+                hIcon = User32Interop.SendMessage(winHandle, WM_GETICON, ICON_SMALL, 0);
+                if (hIcon == IntPtr.Zero)
+                {
+                    hIcon = User32Interop.SendMessage(winHandle, WM_GETICON, ICON_SMALL2, 0);
+                    if (hIcon == IntPtr.Zero)
+                    {
+                        hIcon = GetClassLongPtr(winHandle, GCL_HICON);
+                        if (hIcon == IntPtr.Zero)
+                        {
+                            hIcon = GetClassLongPtr(winHandle, GCL_HICONSM);
+                            if (hIcon == IntPtr.Zero)
+                            {
+                                return null;
+                            }
+                        }
+                    }
+                }
+            }
+
+            Icon icon = null;
+            if (hIcon != IntPtr.Zero)
+            {
+                icon = Icon.FromHandle(hIcon);
+            }
+
+            return icon;
+        }
+
+        /// <summary>
         /// Returns the caret position in a text box.
         /// This is just a helper function that takes care of
         /// cross-thread invokations that would result in .NET
@@ -385,11 +456,35 @@ namespace ACAT.Lib.Core.Utility
         {
             if (textBox.InvokeRequired)
             {
-                return (int)textBox.Invoke(new getCaretPosition(GetCaretPosition), textBox);
+                return (int) textBox.Invoke(new getCaretPosition(GetCaretPosition), textBox);
             }
             else
             {
                 return textBox.SelectionStart;
+            }
+        }
+
+        /// <summary>
+        /// Gets window class long pointer for hWnd
+        /// </summary>
+        /// <param name="hWnd">window handle</param>
+        /// <param name="nIndex">index number</param>
+        /// <returns>window class long</returns>
+        public static IntPtr GetClassLongPtr(IntPtr hWnd, int nIndex)
+        {
+            try
+            {
+                if (IntPtr.Size > 4)
+                {
+                    return User32Interop.GetClassLongPtr64(hWnd, nIndex);
+                }
+
+                uint ret = User32Interop.GetClassLongPtr32(hWnd, nIndex);
+                return new IntPtr((int) ret); // without the cast, it may result in an overflow
+            }
+            catch
+            {
+                return IntPtr.Zero;
             }
         }
 
@@ -414,7 +509,7 @@ namespace ACAT.Lib.Core.Utility
         {
             if (form.InvokeRequired)
             {
-                return (double)form.Invoke(new getOpacity(GetOpacity), form);
+                return (double) form.Invoke(new getOpacity(GetOpacity), form);
             }
 
             return form.Opacity;
@@ -426,29 +521,39 @@ namespace ACAT.Lib.Core.Utility
         /// <returns>os version</returns>
         public static WindowsVersion GetOSVersion()
         {
+            if (_windowsVersion != WindowsVersion.Unknown)
+            {
+                return _windowsVersion;
+            }
+
+            WindowsVersion windowsVersion = WindowsVersion.Unknown;
+
             try
             {
                 var osInfo = Environment.OSVersion;
                 if (osInfo.Version.Major == 6 && osInfo.Version.Minor == 1)
                 {
-                    return WindowsVersion.Win7;
+                    windowsVersion = WindowsVersion.Win7;
                 }
 
                 if (osInfo.Version.Major == 6 && osInfo.Version.Minor == 2)
                 {
-                    return WindowsVersion.Win8;
+                    windowsVersion = WindowsVersion.Win8;
                 }
 
-                if (osInfo.Version.Major == 10 && osInfo.Version.Minor == 0)
+                if (osInfo.Version.Major == 10)
                 {
-                    return WindowsVersion.Win10;
+                    windowsVersion = WindowsVersion.Win10;
                 }
             }
             catch
             {
+                windowsVersion = WindowsVersion.Unknown;
             }
 
-            return WindowsVersion.Unknown;
+            _windowsVersion = windowsVersion;
+
+            return _windowsVersion;
         }
 
         /// <summary>
@@ -499,7 +604,7 @@ namespace ACAT.Lib.Core.Utility
         {
             if (control.InvokeRequired)
             {
-                return (String)control.Invoke(new getSelectedText(GetSelectedText), control);
+                return (String) control.Invoke(new getSelectedText(GetSelectedText), control);
             }
 
             return control.SelectedText;
@@ -515,7 +620,7 @@ namespace ACAT.Lib.Core.Utility
         {
             if (control.InvokeRequired)
             {
-                return (String)control.Invoke(new getText(GetText), control);
+                return (String) control.Invoke(new getText(GetText), control);
             }
 
             return control.Text;
@@ -554,7 +659,7 @@ namespace ACAT.Lib.Core.Utility
         {
             if (trackBar.InvokeRequired)
             {
-                return (int)trackBar.Invoke(new getTrackBarValueInt(GetTrackBarValueInt), trackBar);
+                return (int) trackBar.Invoke(new getTrackBarValueInt(GetTrackBarValueInt), trackBar);
             }
 
             return trackBar.Value;
@@ -572,7 +677,7 @@ namespace ACAT.Lib.Core.Utility
             {
                 if (control.InvokeRequired)
                 {
-                    return (bool)control.Invoke(new getVisible(GetVisible), control);
+                    return (bool) control.Invoke(new getVisible(GetVisible), control);
                 }
 
                 return control.Visible;
@@ -582,6 +687,19 @@ namespace ACAT.Lib.Core.Utility
                 Log.Debug(ex.ToString());
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Returns the class name for the specified window handle
+        /// </summary>
+        /// <param name="hWnd">Window handle</param>
+        /// <returns>class name</returns>
+        public static string GetWindowClassName(IntPtr hWnd)
+        {
+            var sbClassName = new StringBuilder(512);
+            var length = User32Interop.GetClassName(hWnd, sbClassName, sbClassName.Capacity);
+
+            return sbClassName.ToString();
         }
 
         /// <summary>
@@ -610,6 +728,42 @@ namespace ACAT.Lib.Core.Utility
             {
                 User32Interop.ShowWindow(hwnd.ToInt32(), ShowWindowFlags.SW_HIDE);
             }
+        }
+
+        /// <summary>
+        /// Checks if the window has a caption and a title bar, if so
+        /// returns true
+        /// </summary>
+        /// <param name="hWnd">window handle</param>
+        /// <returns>true if it is</returns>
+        public static bool IsApplicationWindow(IntPtr hWnd)
+        {
+            int style = User32Interop.GetWindowLong(hWnd, User32Interop.GWL_STYLE);
+
+            // check for WS_VISIBLE and WS_CAPTION flags
+            return (style & 0x10C00000) == 0x10C00000;
+        }
+
+        /// <summary>
+        /// On Win 10, certain Store apps such as Calculator,
+        /// Photos, Movies and TV are cloaked (hidden) even though
+        /// their visibility is 'true'.  This function detects
+        /// these windows
+        /// </summary>
+        /// <param name="hWnd">window handle to check</param>
+        /// <returns>true if the window is a cloaked window</returns>
+        public static bool IsCloakedWindow(IntPtr hWnd)
+        {
+            if (Windows.GetOSVersion() != Windows.WindowsVersion.Win10)
+            {
+                return false;
+            }
+
+            bool isCloaked;
+
+            DwmGetWindowAttribute(hWnd, DWMWINDOWATTRIBUTE.Cloaked, out isCloaked, 8);
+
+            return isCloaked;
         }
 
         /// <summary>
@@ -665,14 +819,14 @@ namespace ACAT.Lib.Core.Utility
             IntPtr hWnd = windowHandle;
 
             // store windows we have already visited
-            var windowCache = new HashSet<IntPtr> { hWnd };
+            var windowCache = new HashSet<IntPtr> {hWnd};
 
             User32Interop.RECT windowRect;
             User32Interop.GetWindowRect(hWnd, out windowRect);
 
             // check if any of the windows intersects with our window
             while ((hWnd = User32Interop.GetWindow(hWnd, User32Interop.GW_HWNDPREV)) != IntPtr.Zero &&
-                        !windowCache.Contains(hWnd))
+                   !windowCache.Contains(hWnd))
             {
                 User32Interop.RECT rect;
                 User32Interop.RECT intersection;
@@ -716,14 +870,14 @@ namespace ACAT.Lib.Core.Utility
             IntPtr hWnd = windowHandle;
 
             // store windows we have already visited
-            var windowCache = new HashSet<IntPtr> { hWnd };
+            var windowCache = new HashSet<IntPtr> {hWnd};
 
             User32Interop.RECT windowRect;
             User32Interop.GetWindowRect(hWnd, out windowRect);
 
             // check if any of the windows intersects with our window
             while ((hWnd = User32Interop.GetWindow(hWnd, User32Interop.GW_HWNDPREV)) != IntPtr.Zero &&
-                        !windowCache.Contains(hWnd))
+                   !windowCache.Contains(hWnd))
             {
                 User32Interop.RECT rect;
                 User32Interop.RECT intersection;
@@ -804,7 +958,9 @@ namespace ACAT.Lib.Core.Utility
             {
                 User32Interop.SetActiveWindow(hwnd);
             }
-            catch { }
+            catch
+            {
+            }
         }
 
         /// <summary>
@@ -826,7 +982,9 @@ namespace ACAT.Lib.Core.Utility
                     control.BackColor = color;
                 }
             }
-            catch { }
+            catch
+            {
+            }
         }
 
         /// <summary>
@@ -856,7 +1014,7 @@ namespace ACAT.Lib.Core.Utility
         {
             if (control.InvokeRequired)
             {
-                return (bool)control.Invoke(new setFocus(SetFocus), control);
+                return (bool) control.Invoke(new setFocus(SetFocus), control);
             }
 
             return control.Focus();
@@ -899,7 +1057,9 @@ namespace ACAT.Lib.Core.Utility
                     control.ForeColor = color;
                 }
             }
-            catch { }
+            catch
+            {
+            }
         }
 
         /// <summary>
@@ -914,7 +1074,9 @@ namespace ACAT.Lib.Core.Utility
             {
                 retVal = User32Interop.SetForegroundWindow(hwnd);
             }
-            catch { }
+            catch
+            {
+            }
             return retVal;
         }
 
@@ -1001,7 +1163,9 @@ namespace ACAT.Lib.Core.Utility
                     control.Region = region;
                 }
             }
-            catch { }
+            catch
+            {
+            }
         }
 
         /// <summary>
@@ -1119,7 +1283,7 @@ namespace ACAT.Lib.Core.Utility
 
                 case WindowPosition.BottomRight:
                     form.Location = new Point(Screen.PrimaryScreen.WorkingArea.Width - form.Width,
-                                            Screen.PrimaryScreen.WorkingArea.Height - form.Height);
+                        Screen.PrimaryScreen.WorkingArea.Height - form.Height);
                     break;
 
                 case WindowPosition.BottomLeft:
@@ -1127,16 +1291,17 @@ namespace ACAT.Lib.Core.Utility
                     break;
 
                 case WindowPosition.MiddleRight:
-                    form.Location = new Point(Screen.PrimaryScreen.WorkingArea.Width - form.Width, (Screen.PrimaryScreen.WorkingArea.Height - form.Height) / 2);
+                    form.Location = new Point(Screen.PrimaryScreen.WorkingArea.Width - form.Width,
+                        (Screen.PrimaryScreen.WorkingArea.Height - form.Height)/2);
                     break;
 
                 case WindowPosition.MiddleLeft:
-                    form.Location = new Point(0, (Screen.PrimaryScreen.WorkingArea.Height - form.Height) / 2);
+                    form.Location = new Point(0, (Screen.PrimaryScreen.WorkingArea.Height - form.Height)/2);
                     break;
 
                 case WindowPosition.CenterScreen:
-                    form.Location = new Point((Screen.PrimaryScreen.WorkingArea.Width - form.Width) / 2,
-                                        (Screen.PrimaryScreen.WorkingArea.Height - form.Height) / 2);
+                    form.Location = new Point((Screen.PrimaryScreen.WorkingArea.Width - form.Width)/2,
+                        (Screen.PrimaryScreen.WorkingArea.Height - form.Height)/2);
                     break;
             }
             Log.Debug("After setposition " + position);
@@ -1165,7 +1330,7 @@ namespace ACAT.Lib.Core.Utility
 
                 case WindowPosition.BottomRight:
                     location = new Point(Screen.PrimaryScreen.WorkingArea.Width - form.Width,
-                                            Screen.PrimaryScreen.WorkingArea.Height - form.Height);
+                        Screen.PrimaryScreen.WorkingArea.Height - form.Height);
                     break;
 
                 case WindowPosition.BottomLeft:
@@ -1173,12 +1338,13 @@ namespace ACAT.Lib.Core.Utility
                     break;
 
                 case WindowPosition.CenterScreen:
-                    location = new Point((Screen.PrimaryScreen.WorkingArea.Width - form.Width) / 2,
-                                            (Screen.PrimaryScreen.WorkingArea.Height - form.Height) / 2);
+                    location = new Point((Screen.PrimaryScreen.WorkingArea.Width - form.Width)/2,
+                        (Screen.PrimaryScreen.WorkingArea.Height - form.Height)/2);
                     break;
             }
 
-            User32Interop.SetWindowPos(form.Handle.ToInt32(), insertAfter.ToInt32(), location.X, location.Y, 0, 0, 0x0040 | 0x0001);
+            User32Interop.SetWindowPos(form.Handle.ToInt32(), insertAfter.ToInt32(), location.X, location.Y, 0, 0,
+                0x0040 | 0x0001);
         }
 
         /// <summary>
@@ -1226,7 +1392,7 @@ namespace ACAT.Lib.Core.Utility
             Log.Debug("Entering...scannerPosition=" + scannerPosition.ToString() + " percent=" + percent.ToString());
             int screenOffset = 0;
             int moveX = 0;
-            int moveY = 0;  // not really using Y-axis yet but something to keep in mind for the future
+            int moveY = 0; // not really using Y-axis yet but something to keep in mind for the future
 
             if (percent <= 10)
             {
@@ -1244,7 +1410,7 @@ namespace ACAT.Lib.Core.Utility
 
                 if (r.Width > 0 && r.Height > 0)
                 {
-                    Log.Debug("Resize window to " + (r.Width * percent) / 100 + ", " + r.Height);
+                    Log.Debug("Resize window to " + (r.Width*percent)/100 + ", " + r.Height);
 
                     switch (scannerPosition)
                     {
@@ -1254,12 +1420,12 @@ namespace ACAT.Lib.Core.Utility
                             break;
 
                         case WindowPosition.TopLeft:
-                            moveX = (r.Width * screenOffset) / 100;
+                            moveX = (r.Width*screenOffset)/100;
                             moveY = 0;
                             break;
 
                         case WindowPosition.BottomLeft:
-                            moveX = (r.Width * screenOffset) / 100;
+                            moveX = (r.Width*screenOffset)/100;
                             moveY = 0;
                             break;
 
@@ -1269,8 +1435,10 @@ namespace ACAT.Lib.Core.Utility
                             break;
                     }
 
-                    Log.Debug("screenOffset=" + screenOffset + " moveX=" + moveX.ToString() + " moveY=" + moveY.ToString());
-                    User32Interop.SetWindowPos(handle.ToInt32(), 0, moveX, moveY, (r.Width * percent) / 100, r.Height, 0x0040 | 0x0004);
+                    Log.Debug("screenOffset=" + screenOffset + " moveX=" + moveX.ToString() + " moveY=" +
+                              moveY.ToString());
+                    User32Interop.SetWindowPos(handle.ToInt32(), 0, moveX, moveY, (r.Width*percent)/100, r.Height,
+                        0x0040 | 0x0004);
                 }
             }
             else
@@ -1364,8 +1532,8 @@ namespace ACAT.Lib.Core.Utility
 
                 User32Interop.ShowWindow(form.Handle.ToInt32(), SW_SHOWNOACTIVATE);
                 User32Interop.SetWindowPos(form.Handle.ToInt32(), HWND_TOPMOST,
-                                            form.Left, form.Top, form.Width, form.Height,
-                                            SWP_NOACTIVATE);
+                    form.Left, form.Top, form.Width, form.Height,
+                    SWP_NOACTIVATE);
             }
         }
 
@@ -1460,7 +1628,7 @@ namespace ACAT.Lib.Core.Utility
         /// </summary>
         /// <param name="scannerPosition">where to position the window</param>
         /// <param name="percent">the partial maximize percentage</param>
-        public static void ToggleFgWindowMaximizeAndPartialMaximize(WindowPosition scannerPosition, int percent)
+        public static void ToggleSnapForegroundWindow(WindowPosition scannerPosition, int percent)
         {
             IntPtr fgWindow = GetForegroundWindow();
             if (fgWindow != IntPtr.Zero)
@@ -1518,6 +1686,97 @@ namespace ACAT.Lib.Core.Utility
         }
 
         /// <summary>
+        /// Returns the DPI of the monitor
+        /// </summary>
+        /// <returns>DPI</returns>
+        public static float GetDPI()
+        {
+            float defaultDPI = 96.0f;
+
+            if (_dpiX != 0.0f)
+            {
+                return _dpiX;
+            }
+
+            Form form = new Form();
+
+            float retVal;
+
+            Graphics g = form.CreateGraphics();
+            try
+            {
+                retVal = g.DpiX;
+            }
+            catch
+            {
+                retVal = defaultDPI;
+            }
+            finally
+            {
+                g.Dispose();
+            }
+
+            _dpiX = retVal;
+
+            return retVal;
+        }
+
+        /// <summary>
+        /// Returns true if the dpi is 96.0f
+        /// </summary>
+        /// <returns>true if default dpi</returns>
+        public static bool IsDefaultDPI()
+        {
+            float dpi = GetDPI();
+            return (dpi <= 96.0f);
+        }
+
+        /// <summary>
+        /// On Win10, checks if the window belongs to ApplicationFrameHost process
+        /// </summary>
+        /// <param name="handle">window handle</param>
+        /// <returns>true if it is</returns>
+        public static bool IsApplicationFrameHostProcessWindow(IntPtr handle)
+        {
+            try
+            {
+                int processId;
+
+                if (GetOSVersion() != WindowsVersion.Win10)
+                {
+                    return false;
+                }
+
+                User32Interop.GetWindowThreadProcessId(handle, out processId);
+                var process = Process.GetProcessById(processId);
+                return (String.Compare(process.ProcessName, "ApplicationFrameHost", true) == 0);
+            }
+            catch
+            {
+                return false;
+
+            }
+        }
+
+        /// <summary>
+        /// Checks if the two forms overlap
+        /// </summary>
+        /// <param name="form1">first form</param>
+        /// <param name="form2">second form</param>
+        /// <returns>true if they do</returns>
+        public static bool CheckOverlap(Form form1, Form form2)
+        {
+            User32Interop.RECT windowRect;
+            User32Interop.GetWindowRect(form1.Handle, out windowRect);
+
+            User32Interop.RECT rect;
+            User32Interop.GetWindowRect(form2.Handle, out rect);
+
+            User32Interop.RECT intersection;
+            return User32Interop.IntersectRect(out intersection, ref windowRect, ref rect);
+        }
+        
+        /// <summary>
         /// Thread proc for CloseAsync()
         /// </summary>
         /// <param name="form">form to close</param>
@@ -1526,6 +1785,9 @@ namespace ACAT.Lib.Core.Utility
             Thread.Sleep(250);
             CloseForm(form);
         }
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmGetWindowAttribute(IntPtr hwnd, DWMWINDOWATTRIBUTE dwAttribute, out bool pvAttribute, int cbAttribute);
 
         /// <summary>
         /// Threadproc for fade-in

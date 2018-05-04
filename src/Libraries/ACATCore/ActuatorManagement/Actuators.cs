@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="Actuators.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,55 +18,18 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
+using ACAT.Lib.Core.Utility;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Xml;
-using ACAT.Lib.Core.Utility;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
 
 namespace ACAT.Lib.Core.ActuatorManagement
 {
     /// <summary>
     /// Contains a collection of actuators in the system.  Creates
-    /// the actuator objects by parsing the Actuator config file,
+    /// the actuator objects by loading the Actuator settings file,
     /// looks into the Actuators extension directory, loads the DLL's
     /// and caches the Type of the actuator objects
     /// </summary>
@@ -103,13 +66,19 @@ namespace ACAT.Lib.Core.ActuatorManagement
             _actuators = new List<IActuator>();
         }
 
+        /// <summary>
+        /// Gets the list of actuators
+        /// </summary>
         public IEnumerable<IActuator> ActuatorList
         {
-            get
-            {
-                return _actuators;
-            }
+            get { return _actuators; }
         }
+
+        /// <summary>
+        /// Gets the object that contains the settings for the
+        /// actuators and their switches
+        /// </summary>
+        public ActuatorConfig Config { get; private set; }
 
         /// <summary>
         /// Gets the list of actuators
@@ -123,6 +92,39 @@ namespace ACAT.Lib.Core.ActuatorManagement
         }
 
         /// <summary>
+        /// Adds the specified switch to the specified actuator. 
+        /// Notifies the actuator about the switch.  Also adds the 
+        /// switch to the settings file and saves the settings file
+        /// </summary>
+        /// <param name="actuator">atuator to add to</param>
+        /// <param name="switchSetting">switch to add</param>
+        /// <returns>true on success</returns>
+        public bool AddSwitch(IActuator actuator, SwitchSetting switchSetting)
+        {
+            var actuatorSetting = Config.Find(actuator.Descriptor.Id);
+            if (actuatorSetting == null)
+            {
+                return false;
+            }
+
+            var sw = actuatorSetting.Find(switchSetting.Name);
+            if (sw != null)
+            {
+                return true;
+            }
+
+            bool retVal = actuator.Load(new List<SwitchSetting>() { switchSetting });
+
+            if (retVal)
+            {
+                actuatorSetting.SwitchSettings.Add(switchSetting);
+                Config.Save();
+            }
+
+            return retVal;
+        }
+
+        /// <summary>
         /// Disposes the object
         /// </summary>
         public void Dispose()
@@ -132,6 +134,25 @@ namespace ACAT.Lib.Core.ActuatorManagement
             // Prevent finalization code for this object
             // from executing a second time.
             GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Finds actuator by name
+        /// </summary>
+        /// <param name="name">name of the actuator</param>
+        /// <returns>actuator object</returns>
+        public IActuator Find(String name)
+        {
+            foreach (var actuatorEx in _actuatorsEx)
+            {
+                if (String.Compare(name, actuatorEx.SourceActuator.Name, true) == 0)
+                {
+                    return actuatorEx.SourceActuator;
+                }
+            }
+
+            Log.Debug("Could not find actuator by name " + name);
+            return null;
         }
 
         /// <summary>
@@ -155,69 +176,62 @@ namespace ACAT.Lib.Core.ActuatorManagement
         }
 
         /// <summary>
-        /// Parses the "Actuators" root element in the XML file and
-        /// create a list of actuators. Also loads the attributes for
-        /// each actuator
+        /// Loads actuator settigns from the settings file.
+        /// Walks through the extensions dirs, looks for actuators in there
+        /// and caches the Types of the actuators. 
+        /// Configures the actuators with the settings from the settings file.
+        /// Also if any acutators were discovered that are not in the settings file,
+        /// adds them to the settings file and saves it.
         /// </summary>
-        /// <param name="configFile">Name of the XML config file</param>
-        /// <returns></returns>
-        public bool Load(IEnumerable<String> extensionDirs, String configFile, bool recursive = true)
+        /// <param name="extensionDirs">directories to walk through</param>
+        /// <param name="configFile">name of the actuators settings file</param>
+        /// <param name="loadAll">whether to load even the disabled actuators</param>
+        /// <returns>true on success</returns>
+        public bool Load(IEnumerable<String> extensionDirs, String configFile, bool loadAll = false)
         {
             addKeyboardActuatorToCache();
 
             foreach (string dir in extensionDirs)
             {
                 String extensionDir = dir + "\\" + ActuatorManager.ActuatorsRootDir;
-                loadActuatorTypesIntoCache(extensionDir, recursive);
+                loadActuatorTypesIntoCache(extensionDir);
             }
-
-            var doc = new XmlDocument();
 
             if (!File.Exists(configFile))
             {
                 return false;
             }
 
-            doc.Load(configFile);
+            ActuatorConfig.ActuatorSettingsFileName = configFile;
+            Config = ActuatorConfig.Load();
 
-            var actuatorNodes = doc.SelectNodes("/ACAT/Actuators/Actuator");
-
-            if (actuatorNodes == null)
-            {
-                return false;
-            }
-
-            // enumerate all the actuator nodes, create an object and add it
-            // to the collection only if the enabled attribute is set
-            foreach (XmlNode node in actuatorNodes)
+            // walk through the settings file create and configure 
+            // actuators
+            foreach (var actuatorSetting in Config.ActuatorSettings)
             {
                 try
                 {
-                    bool enabled = XmlUtils.GetXMLAttrBool(node, "enabled", false);
-                    String id = XmlUtils.GetXMLAttrString(node, "id");
-                    String name = XmlUtils.GetXMLAttrString(node, "name");
-                    if (enabled && !String.IsNullOrEmpty(id))
+                    bool enabled = (loadAll) || actuatorSetting.Enabled;
+                    if (enabled && (actuatorSetting.Id != Guid.Empty))
                     {
-                        Guid guid;
-                        if (Guid.TryParse(id, out guid))
+                        if (!_actuatorsTypeCache.ContainsKey(actuatorSetting.Id))
                         {
-                            if (_actuatorsTypeCache.ContainsKey(guid))
+                            continue;
+                        }
+
+                        var type = _actuatorsTypeCache[actuatorSetting.Id];
+                        if (type != null)
+                        {
+                            var assembly = Assembly.LoadFrom(type.Assembly.Location);
+                            var actuator = (IActuator)assembly.CreateInstance(type.FullName);
+                            if (actuator != null)
                             {
-                                var type = _actuatorsTypeCache[guid];
-                                if (type != null)
-                                {
-                                    // allow the actuator to load its info from the XML file
-                                    var assembly = Assembly.LoadFrom(type.Assembly.Location);
-                                    var actuator = (IActuator)assembly.CreateInstance(type.FullName);
-                                    if (actuator != null)
-                                    {
-                                        actuator.Load(node);
-                                        actuator.Name = name;
-                                        var actuatorEx = new ActuatorEx(actuator);
-                                        _actuatorsEx.Add(actuatorEx);
-                                        _actuators.Add(actuator);
-                                    }
-                                }
+                                actuator.OnRegisterSwitches();
+                                actuator.Load(actuatorSetting.SwitchSettings);
+                                actuator.Enabled = actuatorSetting.Enabled;
+                                var actuatorEx = new ActuatorEx(actuator);
+                                _actuatorsEx.Add(actuatorEx);
+                                _actuators.Add(actuator);
                             }
                         }
                     }
@@ -228,9 +242,118 @@ namespace ACAT.Lib.Core.ActuatorManagement
                 }
             }
 
+            // now go through all the actuators that are not in the 
+            // settings file and add them to the settings file
+
+            bool isDirty = false;
+            foreach (var actuatorType in _actuatorsTypeCache.Values)
+            {
+                var attr = DescriptorAttribute.GetDescriptor(actuatorType);
+                if (attr != null && attr.Id != Guid.Empty)
+                {
+                    var actuatorSetting = Config.Find(attr.Id);
+                    if (actuatorSetting != null) continue;
+
+                    try
+                    {
+                        var assembly = Assembly.LoadFrom(actuatorType.Assembly.Location);
+                        var actuator = (IActuator)assembly.CreateInstance(actuatorType.FullName);
+                        if (actuator != null)
+                        {
+                            var actuatorEx = new ActuatorEx(actuator);
+                            _actuatorsEx.Add(actuatorEx);
+                            _actuators.Add(actuator);
+
+                            actuatorSetting = new ActuatorSetting(attr.Name, attr.Id);
+                            Config.ActuatorSettings.Add(actuatorSetting);
+
+                            actuator.OnRegisterSwitches();
+                            actuator.Load(actuatorSetting.SwitchSettings);
+
+                            isDirty = true;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Exception(ex);
+                    }
+                }
+            }
+
+            if (isDirty)
+            {
+                Config.Save();
+            }
+
             return true;
         }
 
+        /// <summary>
+        /// Handler for when the application exits
+        /// </summary>
+        public void OnAppQuit()
+        {
+            foreach (var actuator in _actuators)
+            {
+                actuator.OnQuitApplication();
+            }
+        }
+
+        /// <summary>
+        /// Remove the specified switch from the actuator. Also
+        /// remove it from the settings file and save the file
+        /// </summary>
+        /// <param name="actuator">Actuator</param>
+        /// <param name="switchName">switch to remove</param>
+        /// <returns>true on success</returns>
+        public bool RemoveSwitch(IActuator actuator, String switchName)
+        {
+            var actuatorSetting = Config.Find(actuator.Descriptor.Id);
+            if (actuatorSetting == null)
+            {
+                return false;
+            }
+
+            var sw = actuatorSetting.Find(switchName);
+            if (sw == null)
+            {
+                return false;
+            }
+
+            bool retVal = actuator.RemoveSwitch(switchName);
+
+            actuatorSetting.SwitchSettings.Remove(sw);
+            Config.Save();
+
+            return retVal;
+        }
+
+        /// <summary>
+        /// Saves actuator settings to file.  Set the enabled
+        /// attribute before saving
+        /// </summary>
+        public void SaveActuatorSettings()
+        {
+            var actuatorConfig = ActuatorConfig.Load();
+
+            foreach (var actuatorSetting in actuatorConfig.ActuatorSettings)
+            {
+                var actuator = Find(actuatorSetting.Name);
+                if (actuator != null)
+                {
+                    actuatorSetting.Enabled = actuator.Enabled;
+                }
+            }
+
+            actuatorConfig.Save();
+        }
+
+        /// <summary>
+        /// Finds the acuatorex object that contains the
+        /// actuator
+        /// </summary>
+        /// <param name="actuator">source actuator</param>
+        /// <returns>object, null if not found</returns>
         internal ActuatorEx find(IActuator actuator)
         {
             return _actuatorsEx.FirstOrDefault(ac => ac.SourceActuator == actuator);

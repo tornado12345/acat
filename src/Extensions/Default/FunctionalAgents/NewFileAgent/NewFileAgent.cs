@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="NewFileAgent.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,54 +18,21 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.IO;
-using System.Runtime.InteropServices;
-using System.Threading;
-using System.Windows.Automation;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.AgentManagement;
 using ACAT.Lib.Core.AgentManagement.TextInterface;
 using ACAT.Lib.Core.PanelManagement;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Extension;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Windows.Automation;
+using System.Windows.Forms;
+using ACAT.Lib.Core.PreferencesManagement;
+using ACAT.Lib.Core.UserManagement;
 
 namespace ACAT.Extensions.Default.FunctionalAgents.NewFile
 {
@@ -78,10 +45,17 @@ namespace ACAT.Extensions.Default.FunctionalAgents.NewFile
     /// or ms word)
     /// </summary>
     [DescriptorAttribute("91390B32-8C7F-49DE-937E-E0BE3FF224F7",
-                        "New File Agent",
-                        "Agent for creating new files")]
+                        "File Creator",
+                        "NewFileAgent",
+                        "Create new text/Word documents")]
     internal class NewFileAgent : FunctionalAgentBase
+
     {
+        /// <summary>
+        /// Settings for this agent
+        /// </summary>
+        internal static CreateFileSettings Settings;
+
         /// <summary>
         /// Is MS Word installed on the user's computer?
         /// </summary>
@@ -90,10 +64,10 @@ namespace ACAT.Extensions.Default.FunctionalAgents.NewFile
         /// <summary>
         /// Which buttons in the alphabet scanner do we support?
         /// </summary>
-        private readonly String[] _supportedFeatures =
+        private readonly String[] _supportedCommands =
         {
             "Back",
-            "ShiftKey"
+            "CmdShiftKey"
         };
 
         /// <summary>
@@ -105,7 +79,6 @@ namespace ACAT.Extensions.Default.FunctionalAgents.NewFile
         /// The form that allows the user to enter the name of the file
         /// </summary>
         private NewFileNameForm _newFileNameForm;
-
         /// <summary>
         /// Determines whether the alphabet scanner has been
         /// shown or not
@@ -113,11 +86,31 @@ namespace ACAT.Extensions.Default.FunctionalAgents.NewFile
         private bool _scannerShown;
 
         /// <summary>
+        /// Name of the settings file
+        /// </summary>
+        private const string SettingsFileName = "CreateFileSettings.xml";
+
+        /// <summary>
         /// Initializes a new instance of the class.
         /// </summary>
         public NewFileAgent()
         {
             Name = "New File Agent";
+
+            CreateFileSettings.PreferencesFilePath = UserManager.GetFullPath(SettingsFileName);
+
+            if (!File.Exists(CreateFileSettings.PreferencesFilePath))
+            {
+                Settings = CreateFileSettings.Load();
+                Settings.NewTextFileCreateFolder = Common.AppPreferences.NewTextFileCreateFolder;
+                Settings.NewWordDocCreateFolder = Common.AppPreferences.NewWordDocCreateFolder;
+
+                Settings.Save();
+            }
+            else
+            {
+                Settings = CreateFileSettings.Load();
+            }
 
             try
             {
@@ -129,7 +122,8 @@ namespace ACAT.Extensions.Default.FunctionalAgents.NewFile
                     dynamic wordObject = Activator.CreateInstance(type);
                     if (wordObject != null)
                     {
-                        _isWordInstalled = (wordObject.Version == "14.0");
+                        //_isWordInstalled = (wordObject.Version == "14.0");
+                        _isWordInstalled = true;
                         wordObject.Quit(false);
                     }
                 }
@@ -156,7 +150,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.NewFile
         /// <returns>true on success</returns>
         public override bool Activate()
         {
+            IsClosing = false;
             ExitCode = CompletionCode.ContextSwitch;
+            IsActive = true;
 
             if (CreateTextFile)
             {
@@ -172,17 +168,29 @@ namespace ACAT.Extensions.Default.FunctionalAgents.NewFile
                 switch (choice)
                 {
                     case "TextFile":
-                        if (checkValidOrCreate(Common.AppPreferences.NewTextFileCreateFolder))
+                        if (checkValidOrCreate(Settings.NewTextFileCreateFolder))
                         {
                             showNewFileDialogForTextFile();
                         }
+                        else
+                        {
+                            ExitCode = CompletionCode.None;
+                            handleQuit(false);
+                        }
+
                         break;
 
                     case "WordDoc":
-                        if (checkValidOrCreate(Common.AppPreferences.NewWordDocCreateFolder))
+                        if (checkValidOrCreate(Settings.NewWordDocCreateFolder))
                         {
                             showNewFileDialogForWordDoc();
                         }
+                        else
+                        {
+                            ExitCode = CompletionCode.None;
+                            handleQuit(false);
+                        }
+
                         break;
 
                     default:
@@ -200,36 +208,34 @@ namespace ACAT.Extensions.Default.FunctionalAgents.NewFile
         /// to determine the 'enabled' state.
         /// </summary>
         /// <param name="arg">info about the scanner button</param>
-        public override void CheckWidgetEnabled(CheckEnabledArgs arg)
+        public override void CheckCommandEnabled(CommandEnabledArg arg)
         {
-            switch (arg.Widget.SubClass)
+            switch (arg.Command)
             {
-                case "ToolsMenu":
-                case "ShowMainMenu":
-                case "MouseScanner":
-                case "CursorScanner":
-                case "TabKey":
-                case "AltKey":
-                case "CtrlKey":
-                case "ContextualMenu":
-                case "FileBrowserToggle":
-                case "PreviousPage":
-                case "NextPage":
-                case "FunctionKeyScanner":
-                case "ShowWindowPosSizeMenu":
-                case "ToggleTalkWindow":
+                case "CmdToolsMenu":
+                case "CmdMainMenu":
+                case "CmdMouseScanner":
+                case "CmdCursorScanner":
+                case "Tab":
+                case "CmdAltKey":
+                case "CmdCtrlKey":
+                case "CmdContextMenu":
+                case "CmdPrevPage":
+                case "CmdNextPage":
+                case "CmdFunctionKeyScanner":
+                case "CmdWindowPosSizeMenu":
+                case "CmdTalkWindowToggle":
                     arg.Handled = true;
                     arg.Enabled = false;
                     break;
 
                 case "Back":
-                case "DeletePreviousWord":
-                case "clearText":
+                case "CmdDeletePrevWord":
                     arg.Handled = true;
                     arg.Enabled = _newFileNameForm != null && !String.IsNullOrEmpty(_newFileNameForm.FileNameEntered);
                     return;
 
-                case "EnterKey":
+                case "CmdEnterKey":
                     arg.Handled = true;
                     arg.Enabled = _newFileNameForm != null && _newFileNameForm.ValidNameSpecified();
                     return;
@@ -239,13 +245,13 @@ namespace ACAT.Extensions.Default.FunctionalAgents.NewFile
                     arg.Handled = true;
                     break;
 
-                case "TextDoc":
+                case "TextFile":
                     arg.Enabled = true;
                     arg.Handled = true;
                     break;
             }
 
-            checkWidgetEnabled(_supportedFeatures, arg);
+            checkCommandEnabled(_supportedCommands, arg);
         }
 
         /// <summary>
@@ -256,11 +262,17 @@ namespace ACAT.Extensions.Default.FunctionalAgents.NewFile
         /// <param name="handled">was this handled</param>
         public override void OnFocusChanged(WindowActivityMonitorInfo monitorInfo, ref bool handled)
         {
+            if (IsClosing)
+            {
+                Log.Debug("IsClosing is true.  Will not handle the focus change");
+                return;
+            }
+
             Log.Debug("OnFocus: " + monitorInfo.ToString());
 
             base.OnFocusChanged(monitorInfo, ref handled);
             Log.Debug("menuShown: " + _scannerShown + ", title: " + monitorInfo.Title);
-            if (!_scannerShown && monitorInfo.Title == "Create New File")
+            if (!_scannerShown && monitorInfo.Title == R.GetString("CreateNewFile"))
             {
                 var arg = new PanelRequestEventArgs("Alphabet", monitorInfo);
                 _scannerShown = true;
@@ -311,14 +323,6 @@ namespace ACAT.Extensions.Default.FunctionalAgents.NewFile
 
             switch (command)
             {
-                case "clearText":
-                    if (_newFileNameForm != null && confirm("Clear File Name?"))
-                    {
-                        _newFileNameForm.ClearFileName();
-                    }
-
-                    break;
-
                 default:
                     base.OnRunCommand(command, commandArg, ref handled);
                     break;
@@ -402,8 +406,8 @@ namespace ACAT.Extensions.Default.FunctionalAgents.NewFile
             {
                 DialogUtils.ShowTimedDialog(
                                     Context.AppPanelManager.GetCurrentForm() as Form,
-                                    "Error",
-                                    "Could not create folder " + normalizedFolder);
+                                    R.GetString("Error"),
+                                    String.Format(R.GetString("CouldNotCreateFolder"), normalizedFolder));
             }
 
             return false;
@@ -468,23 +472,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.NewFile
                 Microsoft.Office.Interop.Word.Document adoc = wordApp.Documents.Add();
                 object missing = System.Reflection.Missing.Value;
                 object f = fileName;
-                adoc.SaveAs(
-                        ref f,
-                        ref missing,
-                        ref missing,
-                        ref missing,
-                        ref missing,
-                        ref missing,
-                        ref missing,
-                        ref missing,
-                        ref missing,
-                        ref missing,
-                        ref missing,
-                        ref missing,
-                        ref missing,
-                        ref missing,
-                        ref missing,
-                        ref missing);
+                adoc.SaveAs(ref f, ref missing, ref missing, ref missing, ref missing,ref missing,
+                        ref missing, ref missing, ref missing, ref missing, ref missing,ref missing,
+                        ref missing, ref missing, ref missing, ref missing);
 
                 adoc.Close(Microsoft.Office.Interop.Word.WdSaveOptions.wdSaveChanges, ref missing, ref missing);
                 if (comCreated)
@@ -570,7 +560,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.NewFile
             bool confirmQuit = true;
             if (showPrompt)
             {
-                confirmQuit = confirm("Exit without creating?");
+                confirmQuit = confirm(R.GetString("ExitWithoutCreating"));
                 if (confirmQuit)
                 {
                     ExitCode = CompletionCode.None;
@@ -579,6 +569,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.NewFile
 
             if (confirmQuit)
             {
+                IsClosing = true;
+                IsActive = false;
+
                 if (_newFileNameForm != null)
                 {
                     _newFileNameForm.EvtDone -= _newFileNameForm_EvtDone;
@@ -600,9 +593,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.NewFile
         /// </summary>
         private String showFileChoices()
         {
-            _fileChoiceMenu = Context.AppPanelManager.CreatePanel("FileChoiceMenu", "Create New") as FileChoiceMenu;
+            _fileChoiceMenu = Context.AppPanelManager.CreatePanel("NewFileChoiceMenu", R.GetString("CreateNew")) as FileChoiceMenu;
             _scannerShown = false;
-            Context.AppPanelManager.ShowDialog(_fileChoiceMenu as IPanel);
+            Context.AppPanelManager.ShowDialog(_fileChoiceMenu);
 
             return _fileChoiceMenu.Choice;
         }
@@ -615,7 +608,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.NewFile
             _newFileNameForm = new NewFileNameForm();
             _newFileNameForm.EvtDone += _newFileNameForm_EvtDone;
             _newFileNameForm.CreateFileType = NewFileNameForm.FileType.Text;
-            _newFileNameForm.CreateFileDirectory = SmartPath.ACATNormalizePath(Common.AppPreferences.NewTextFileCreateFolder);
+            _newFileNameForm.CreateFileDirectory = SmartPath.ACATNormalizePath(Settings.NewTextFileCreateFolder);
             _newFileNameForm.ShowDialog();
         }
 
@@ -627,7 +620,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.NewFile
             _newFileNameForm = new NewFileNameForm();
             _newFileNameForm.EvtDone += _newFileNameForm_EvtDone;
             _newFileNameForm.CreateFileType = NewFileNameForm.FileType.Word;
-            _newFileNameForm.CreateFileDirectory = SmartPath.ACATNormalizePath(Common.AppPreferences.NewWordDocCreateFolder);
+            _newFileNameForm.CreateFileDirectory = SmartPath.ACATNormalizePath(Settings.NewWordDocCreateFolder);
             _newFileNameForm.ShowDialog();
         }
 
@@ -673,7 +666,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.NewFile
         private void waitForWordWindow(String fileName)
         {
             String name = Path.GetFileName(fileName);
-            String title = name + " - Microsoft Word";
+            String title = name + " - " + R.GetString("MicrosoftWord");
             Log.Debug(title);
             for (int ii = 0; ii < 10; ii++)
             {
@@ -688,5 +681,24 @@ namespace ACAT.Extensions.Default.FunctionalAgents.NewFile
                 Thread.Sleep(500);
             }
         }
+
+        /// <summary>
+        /// Returns the default settings
+        /// </summary>
+        /// <returns>Default settings object</returns>
+        public override IPreferences GetDefaultPreferences()
+        {
+            return PreferencesBase.LoadDefaults<CreateFileSettings>();
+        }
+
+        /// <summary>
+        /// Returns the settings for this agent
+        /// </summary>
+        /// <returns>settings object</returns>
+        public override IPreferences GetPreferences()
+        {
+            return Settings;
+        }
+
     }
 }

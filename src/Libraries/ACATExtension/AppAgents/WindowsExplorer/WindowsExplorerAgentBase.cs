@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="WindowsExplorerAgentBase.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,49 +18,14 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Windows.Automation;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.AgentManagement;
 using ACAT.Lib.Core.PanelManagement;
 using ACAT.Lib.Core.Utility;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Collections.Generic;
+using System.Windows.Automation;
+using System.Windows.Forms;
 
 namespace ACAT.Lib.Extension.AppAgents.WindowsExplorer
 {
@@ -85,7 +50,7 @@ namespace ACAT.Lib.Extension.AppAgents.WindowsExplorer
         private const String ContextualMenuName = "WindowsExplorerContextMenu";
 
         /// <summary>
-        /// This one supports Acrobat reader
+        /// This one supports Windows Explorer
         /// </summary>
         private const String ExplorerProcessName = "explorer";
 
@@ -93,10 +58,10 @@ namespace ACAT.Lib.Extension.AppAgents.WindowsExplorer
         /// Features supported by this agent. Widgets that
         /// correspond to these features will be enabled
         /// </summary>
-        private readonly String[] _supportedFeatures =
+        private readonly String[] _supportedCommands =
         {
-            "ContextualMenu",
-            "SwitchAppWindow"
+            "CmdContextMenu",
+            "CmdSwitchApps"
         };
 
         /// <summary>
@@ -122,17 +87,16 @@ namespace ACAT.Lib.Extension.AppAgents.WindowsExplorer
         /// will depend on the current context.
         /// </summary>
         /// <param name="arg">contains info about the widget</param>
-        public override void CheckWidgetEnabled(CheckEnabledArgs arg)
+        public override void CheckCommandEnabled(CommandEnabledArg arg)
         {
-            if (arg.Widget.SubClass == "WindowsStartMenu" &&
-                (_osVersion == Windows.WindowsVersion.Win8 || _osVersion == Windows.WindowsVersion.Win10))
+            if (arg.Command == "StartMenu")
             {
-                arg.Enabled = false;
+                arg.Enabled = (_osVersion != Windows.WindowsVersion.Win8);
                 arg.Handled = true;
             }
             else
             {
-                checkWidgetEnabled(_supportedFeatures, arg);
+                checkCommandEnabled(_supportedCommands, arg);
             }
         }
 
@@ -142,9 +106,7 @@ namespace ACAT.Lib.Extension.AppAgents.WindowsExplorer
         /// <param name="monitorInfo">Foreground window info</param>
         public override void OnContextMenuRequest(WindowActivityMonitorInfo monitorInfo)
         {
-            // Do a panel switch to the main document
-            //AgentManager.Instance.Keyboard.Send(Keys.F6);
-            showPanel(this, new PanelRequestEventArgs(ContextualMenuName, "Explorer", monitorInfo));
+            showPanel(this, new PanelRequestEventArgs(ContextualMenuName, R.GetString("Explorer"), monitorInfo));
         }
 
         /// <summary>
@@ -212,15 +174,15 @@ namespace ACAT.Lib.Extension.AppAgents.WindowsExplorer
                     break;
 
                 case "NavigateMenu":
-                    showMenu("WindowsExplorerNavigateMenu", "Explorer Navigate");
+                    showMenu("WindowsExplorerNavigateMenu", R.GetString("ExplorerNavigate"));
                     break;
 
                 case "FileOpsMenu":
-                    showMenu("WindowsExplorerFileOpsMenu", "Explorer File Ops");
+                    showMenu("WindowsExplorerFileOpsMenu", R.GetString("ExplorerFileOps"));
                     break;
 
                 case "ClipboardMenu":
-                    showMenu("WindowsExplorerClipboardMenu", "Explorer Clipboard");
+                    showMenu("WindowsExplorerClipboardMenu", R.GetString("ExplorerClipboard"));
                     break;
 
                 case "PageUp":
@@ -295,6 +257,10 @@ namespace ACAT.Lib.Extension.AppAgents.WindowsExplorer
                     AgentManager.Instance.Keyboard.Send(Keys.F3);
                     break;
 
+                case "NextField":
+                    AgentManager.Instance.Keyboard.Send(Keys.F6);
+                    break;
+
                 default:
                     base.OnRunCommand(command, commandArg, ref handled);
                     break;
@@ -317,7 +283,7 @@ namespace ACAT.Lib.Extension.AppAgents.WindowsExplorer
             {
                 if (isFileExplorer(windowElement))
                 {
-                    Log.Debug("KILLROY isFileExploer is TRUE ");
+                    Log.Debug("isFileExploer is TRUE ");
                     if (Windows.IsMinimized(monitorInfo.FgHwnd))
                     {
                         retVal = false;
@@ -329,17 +295,16 @@ namespace ACAT.Lib.Extension.AppAgents.WindowsExplorer
                 }
                 else
                 {
-                    Log.Debug("KILLROY isFileExploer is FALSE");
+                    Log.Debug("isFileExploer is FALSE");
                     retVal = false;
                 }
             }
             else
             {
-                Log.Debug("KILLROY windowElement is NULL");
-
+                Log.Debug("windowElement is NULL");
             }
 
-            Log.Debug("KILLROY return from getmenu : " + retVal);
+            Log.Debug("return from getmenu : " + retVal);
             return retVal;
         }
 
@@ -413,10 +378,10 @@ namespace ACAT.Lib.Extension.AppAgents.WindowsExplorer
         /// <param name="handled">set to true if handled</param>
         private void displayScanner(WindowActivityMonitorInfo monitorInfo, ref bool handled)
         {
-            Log.Debug("KILLROY Entered");
+            Log.Debug("Entered");
             if (monitorInfo.FocusedElement.Current.ControlType.ProgrammaticName == "ControlType.Edit")
             {
-                Log.Debug("KILLROY controtype edit");
+                Log.Debug("controtype edit");
 
                 base.OnFocusChanged(monitorInfo, ref handled);
                 showPanel(this, new PanelRequestEventArgs(PanelClasses.Alphabet, monitorInfo));
@@ -424,25 +389,17 @@ namespace ACAT.Lib.Extension.AppAgents.WindowsExplorer
             }
             else// if (monitorInfo.IsNewWindow)
             {
-                Log.Debug("KILLROY calling getmenu");
+                Log.Debug("calling getmenu");
 
                 String panel = PanelClasses.None;
                 handled = getMenu(monitorInfo, ref panel);
 
                 if (handled)
                 {
-                    showPanel(this, new PanelRequestEventArgs(panel, "Explorer", monitorInfo));
+                    showPanel(this, new PanelRequestEventArgs(panel, R.GetString("Explorer"), monitorInfo));
                     _scannerShown = true;
                 }
             }
-#if abc
-            else
-            {
-                Log.Debug("KILLROY *** FALL THROUGH>  WILL NOT BE HANDLED");
-
-                //handled = true;
-            }
-#endif
         }
 
         /// <summary>

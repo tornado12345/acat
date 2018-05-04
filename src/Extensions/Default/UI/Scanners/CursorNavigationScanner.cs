@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="CursorNavigationScanner.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,10 +18,6 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Security.Permissions;
-using System.Windows.Forms;
 using ACAT.Lib.Core.AgentManagement;
 using ACAT.Lib.Core.PanelManagement;
 using ACAT.Lib.Core.PanelManagement.CommandDispatcher;
@@ -29,41 +25,9 @@ using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Core.WidgetManagement;
 using ACAT.Lib.Extension;
 using ACAT.Lib.Extension.CommandHandlers;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Security.Permissions;
+using System.Windows.Forms;
 
 namespace ACAT.Extensions.Default.UI.Scanners
 {
@@ -85,7 +49,7 @@ namespace ACAT.Extensions.Default.UI.Scanners
         /// <summary>
         /// The ScannerCommon object
         /// </summary>
-        private ScannerCommon _scannerCommon;
+        private readonly ScannerCommon _scannerCommon;
 
         /// <summary>
         /// The ScannerHelper object
@@ -97,6 +61,8 @@ namespace ACAT.Extensions.Default.UI.Scanners
         /// </summary>
         public CursorNavigationScanner()
         {
+            _scannerCommon = new ScannerCommon(this);
+
             InitializeComponent();
 
             Load += CursorNavigationScanner_Load;
@@ -135,11 +101,26 @@ namespace ACAT.Extensions.Default.UI.Scanners
         public String PanelClass { get; private set; }
 
         /// <summary>
+        /// Gets the PanelCommon object
+        /// </summary>
+        public IPanelCommon PanelCommon { get { return _scannerCommon; } }
+
+        /// <summary>
         /// Gets the scanner common object
         /// </summary>
         public ScannerCommon ScannerCommon
         {
             get { return _scannerCommon; }
+        }
+
+        /// <summary>
+        /// Size of the client changed
+        /// </summary>
+        /// <param name="e">event args</param>
+        protected override void OnClientSizeChanged(EventArgs e)
+        {
+            base.OnClientSizeChanged(e);
+            _scannerCommon.OnClientSizeChanged();
         }
 
         /// <summary>
@@ -183,9 +164,9 @@ namespace ACAT.Extensions.Default.UI.Scanners
         /// to determine the 'enabled' state.
         /// </summary>
         /// <param name="arg">info about the scanner button</param>
-        public bool CheckWidgetEnabled(CheckEnabledArgs arg)
+        public bool CheckCommandEnabled(CommandEnabledArg arg)
         {
-            return _scannerHelper.CheckWidgetEnabled(arg);
+            return _scannerHelper.CheckCommandEnabled(arg);
         }
 
         /// <summary>
@@ -195,7 +176,6 @@ namespace ACAT.Extensions.Default.UI.Scanners
         /// <returns>true on success</returns>
         public bool Initialize(StartupArg startupArg)
         {
-            _scannerCommon = new ScannerCommon(this);
             _scannerHelper = new ScannerHelper(this, startupArg);
 
             if (!_scannerCommon.Initialize(startupArg))
@@ -204,7 +184,7 @@ namespace ACAT.Extensions.Default.UI.Scanners
                 return false;
             }
 
-            _scannerCommon.CreateStatusBar();
+            _scannerCommon.SetStatusBar(statusStrip);
 
             return true;
         }
@@ -226,10 +206,6 @@ namespace ACAT.Extensions.Default.UI.Scanners
         {
             Log.Debug();
 
-            _scannerCommon.GetAnimationManager().Pause();
-
-            _scannerCommon.HideScanner();
-
             _scannerCommon.OnPause();
         }
 
@@ -249,10 +225,6 @@ namespace ACAT.Extensions.Default.UI.Scanners
         public void OnResume()
         {
             Log.Debug();
-
-            _scannerCommon.GetAnimationManager().Resume();
-
-            _scannerCommon.ShowScanner();
 
             _scannerCommon.OnResume();
         }
@@ -329,7 +301,7 @@ namespace ACAT.Extensions.Default.UI.Scanners
 
             _scannerCommon.OnLoad();
 
-            _scannerCommon.GetAnimationManager().Start(_scannerCommon.GetRootWidget());
+            PanelCommon.AnimationManager.Start(PanelCommon.RootWidget);
         }
 
         /// <summary>

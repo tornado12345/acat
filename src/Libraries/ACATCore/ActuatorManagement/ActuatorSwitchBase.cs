@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="ActuatorSwitchBase.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,47 +18,12 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Media;
-using System.Xml;
 using ACAT.Lib.Core.Utility;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Media;
 
 namespace ACAT.Lib.Core.ActuatorManagement
 {
@@ -77,7 +42,7 @@ namespace ACAT.Lib.Core.ActuatorManagement
 
         /// <summary>
         /// Timer to track the accept time.  If the switch
-        /// stays engaged for less then AcceptTime, the
+        /// stays engaged for less then MinActuationHoldTime, the
         /// switch is ignored.
         /// </summary>
         private Stopwatch _acceptTimer;
@@ -121,6 +86,7 @@ namespace ACAT.Lib.Core.ActuatorManagement
         public ActuatorSwitchBase(IActuatorSwitch switchObj)
         {
             Name = switchObj.Name;
+            Description = switchObj.Description;
             Source = switchObj.Source;
             _isActive = switchObj.IsActive;
             AcceptTime = switchObj.AcceptTime;
@@ -133,6 +99,8 @@ namespace ACAT.Lib.Core.ActuatorManagement
             _acceptTimer = switchObj.AcceptTimer;
             Actuate = switchObj.Actuate;
             Tag = switchObj.Tag;
+            Command = switchObj.Command;
+            Enabled = switchObj.Enabled;
         }
 
         /// <summary>
@@ -186,9 +154,24 @@ namespace ACAT.Lib.Core.ActuatorManagement
         public String BeepFile { get; set; }
 
         /// <summary>
+        /// Gets the command associated with this switch
+        /// </summary>
+        public String Command { get; private set; }
+
+        /// <summary>
         /// Gets or sets the confidence level (unused now)
         /// </summary>
         public int Confidence { get; set; }
+
+        /// <summary>
+        /// Gets or sets the description for the switch
+        /// </summary>
+        public String Description { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the switch is enabled or not
+        /// </summary>
+        public bool Enabled { get; set; }
 
         /// <summary>
         /// Gets or sets the active state of the switch.
@@ -264,37 +247,39 @@ namespace ACAT.Lib.Core.ActuatorManagement
         /// </summary>
         /// <param name="xmlNode">The XML node that contains the Switch attributes</param>
         /// <returns>True on successful parse, false otherwise</returns>
-        public virtual bool Load(XmlNode xmlNode)
+        public virtual bool Load(SwitchSetting switchSetting)
         {
-            // name of the actuator
-            Name = XmlUtils.GetXMLAttrString(xmlNode, "name");
+            Name = switchSetting.Name;
+            Source = switchSetting.Source;
+            Description = switchSetting.Description;
+            Actuate = switchSetting.Actuate;
+            Enabled = switchSetting.Enabled;
+            AcceptTime = CoreGlobals.AppPreferences.ResolveVariableInt(switchSetting.MinHoldTime, CoreGlobals.AppPreferences.MinActuationHoldTime, 0);
 
-            // read and set the remaining attributes
-            bool enabled = XmlUtils.GetXMLAttrBool(xmlNode, "enabled", true);
-            if (!enabled)
+            if (!String.IsNullOrEmpty(switchSetting.BeepFile))
             {
-                return false;
+                var beepFile = FileUtils.GetSoundPath(switchSetting.BeepFile);
+                if (File.Exists(beepFile))
+                {
+                    try
+                    {
+                        _audio = new SoundPlayer(beepFile);
+                        BeepFile = beepFile;
+                    }
+                    catch (Exception)
+                    {
+                    }
+                }
             }
 
-            Actuate = XmlUtils.GetXMLAttrBool(xmlNode, "actuate", true);
-
-            Source = XmlUtils.GetXMLAttrString(xmlNode, "source");
-
-            String value = XmlUtils.GetXMLAttrString(xmlNode, "minHoldTime");
-            AcceptTime = CoreGlobals.AppPreferences.ResolveVariableInt(value, CoreGlobals.AppPreferences.AcceptTime, 0);
-
-            BeepFile = XmlUtils.GetXMLAttrString(xmlNode, "beepFile");
-            if (!String.IsNullOrEmpty(BeepFile))
-            {
-                _audio = new SoundPlayer(FileUtils.GetSoundPath(BeepFile));
-            }
+            Command = switchSetting.Command;
 
             return true;
         }
 
         /// <summary>
         /// Records the fact that a switch down was detected.  Starts
-        /// a timer to track the AcceptTime
+        /// a timer to track the MinActuationHoldTime
         /// </summary>
         public void RegisterSwitchDown()
         {

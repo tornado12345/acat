@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="PhraseSpeakAgent.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,50 +18,15 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Windows.Automation;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.AgentManagement;
 using ACAT.Lib.Core.AgentManagement.TextInterface;
 using ACAT.Lib.Core.PanelManagement;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Extension;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Windows.Automation;
+using System.Windows.Forms;
 
 namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
 {
@@ -72,8 +37,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
     /// abbreviations whose mode is "Speak" and displays them in a list.
     /// </summary>
     [DescriptorAttribute("BAE2CB86-5D8D-4285-A33C-A32DB93AE311",
-                        "Phrase Speak Agent",
-                        "UI to convert phrases to speech")]
+                        "Text-to-speech Phrase Manager",
+                        "PhraseSpeakAgent",
+                        "Select phrases from a list of preferred phrases and convert them to speech")]
     public class PhraseSpeakAgent : FunctionalAgentBase
     {
         /// <summary>
@@ -82,9 +48,38 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         private PhraseSpeakScanner _phraseSpeakScanner;
 
         /// <summary>
+        /// Initializes a new instance of the class
+        /// </summary>
+        public PhraseSpeakAgent()
+        {
+            Instance = this;
+        }
+
+        /// <summary>
+        /// For the event raised to check if a widget needs to be enabled
+        /// </summary>
+        /// <param name="arg">event args</param>
+        internal delegate void CheckCommandEnabledDelegate(CommandEnabledArg arg);
+
+        /// <summary>
+        /// Raised to check if a widget needs to be enabled
+        /// </summary>
+        internal event CheckCommandEnabledDelegate EvtCommandEnabled;
+
+        /// <summary>
+        /// Returns the instance of this agent
+        /// </summary>
+        public static PhraseSpeakAgent Instance { get; private set; }
+
+        /// <summary>
         /// Get/sets whether "Search" be enabled or not
         /// </summary>
         public bool EnableSearch { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether to edit the phrase list
+        /// </summary>
+        public bool PhraseListEdit { get; set; }
 
         /// <summary>
         /// Get confirmation from the user
@@ -107,19 +102,37 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
             bool retVal = true;
 
             ExitCode = CompletionCode.None;
+            IsClosing = false;
 
-            _phraseSpeakScanner = Context.AppPanelManager.CreatePanel("PhraseSpeakScanner") as PhraseSpeakScanner;
-            if (_phraseSpeakScanner != null)
+            if (PhraseListEdit)
             {
-                _phraseSpeakScanner.EnableSearch = EnableSearch;
+                var dlg = Context.AppPanelManager.CreatePanel("PhraseListEditForm");
+                IsActive = true;
 
-                subscribeToEvents();
+                Context.AppPanelManager.ShowDialog(Context.AppPanelManager.GetCurrentPanel(), dlg as IPanel);
 
-                Context.AppPanelManager.ShowDialog(_phraseSpeakScanner);
+                IsClosing = true;
+                IsActive = false;
+
+                Close();
             }
             else
             {
-                retVal = false;
+                _phraseSpeakScanner = Context.AppPanelManager.CreatePanel("PhraseSpeakScanner") as PhraseSpeakScanner;
+                if (_phraseSpeakScanner != null)
+                {
+                    _phraseSpeakScanner.ShowSearchButton = EnableSearch;
+
+                    subscribeToEvents();
+
+                    IsActive = true;
+
+                    Context.AppPanelManager.ShowDialog(_phraseSpeakScanner);
+                }
+                else
+                {
+                    retVal = false;
+                }
             }
 
             return retVal;
@@ -130,28 +143,22 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         /// to determine the 'enabled' state.
         /// </summary>
         /// <param name="arg">info about the scanner button</param>
-        public override void CheckWidgetEnabled(CheckEnabledArgs arg)
+        public override void CheckCommandEnabled(CommandEnabledArg arg)
         {
             arg.Handled = true;
 
-            switch (arg.Widget.SubClass)
+            switch (arg.Command)
             {
-                case "PunctuationScanner":
-                case "NumberScanner":
+                case "CmdPunctuationScanner":
+                case "CmdNumberScanner":
+                case "CmdCursorScanner":
                     arg.Enabled = true;
                     break;
 
                 default:
-
-                    if (_phraseSpeakScanner != null && !Windows.GetVisible(_phraseSpeakScanner))
+                    if (EvtCommandEnabled != null)
                     {
-                        arg.Handled = false;
-                        return;
-                    }
-
-                    if (_phraseSpeakScanner != null && Windows.GetVisible(_phraseSpeakScanner))
-                    {
-                        _phraseSpeakScanner.CheckWidgetEnabled(arg);
+                        EvtCommandEnabled(arg);
                     }
 
                     if (!arg.Handled)
@@ -171,6 +178,12 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         /// <param name="handled">was this handled</param>
         public override void OnFocusChanged(WindowActivityMonitorInfo monitorInfo, ref bool handled)
         {
+            if (IsClosing)
+            {
+                Log.Debug("IsClosing is true.  Will not handle the focus change");
+                return;
+            }
+
             base.OnFocusChanged(monitorInfo, ref handled);
 
             handled = true;
@@ -297,11 +310,14 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
 
             if (showConfirmDialog)
             {
-                quit = Confirm("Close?");
+                quit = Confirm(R.GetString("CloseQ"));
             }
 
             if (quit)
             {
+                IsClosing = true;
+                IsActive = false;
+
                 closeScanner();
                 Close();
             }

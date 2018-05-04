@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="FileBrowserSettings.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,44 +18,10 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Diagnostics.CodeAnalysis;
+using ACAT.Lib.Core.PreferencesManagement;
 using ACAT.Lib.Core.Utility;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Xml.Serialization;
 
 namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
 {
@@ -70,30 +36,22 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         /// <summary>
         /// Name of the settings file
         /// </summary>
-        [NonSerialized]
+        [NonSerialized, XmlIgnore]
         public static String PreferencesFilePath;
 
         /// <summary>
         /// Folders from which to select files.  Semi-colon delimited
         /// folders can be specified.
         /// </summary>
+        [StringDescriptor("Folders from which to open files in the File Browser.  Enter semi-colon delimited full path to the folders. Use @MyDocuments to reperent your Documents folder. " +
+            "For e.g. @MyDocuments\\Files;C:\\Docs;")]
         public String FavoriteFolders = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-
-        /// <summary>
-        /// Date/time format to use in the file listing
-        /// </summary>
-        public String FileBrowserDateFormat = "MM/dd/yyyy";
 
         /// <summary>
         /// Semi-colon delimited list of files with these extensions to exclude.
         /// </summary>
-        public String FileBrowserExcludeFileExtensions = String.Empty;
-
-        /// <summary>
-        /// Set to true to show options when the user selects a file.  The options
-        /// include whether to open or delete the file.
-        /// </summary>
-        public bool FileBrowserShowFileOperationsMenu = true;
+        [StringDescriptor("Exclude these extensions when displaying files in the File Browser. Enter semi-colon delimited extensions.  For e.g.  *.jpg;*.pdf;*.png;*.xls")]
+        public String ExcludeFileExtensions = String.Empty;
 
         /// <summary>
         /// Load settings
@@ -121,12 +79,12 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         }
 
         /// <summary>
-        /// Save settings.  No op for now
+        /// Save settings to the preferences file (PreferencesFilePath)
         /// </summary>
-        /// <returns>true always</returns>
+        /// <returns>true if successful</returns>
         public override bool Save()
         {
-            return true;
+            return Save(this, PreferencesFilePath);
         }
     }
 }

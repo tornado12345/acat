@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="ScannerPositionSizeController.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,47 +18,12 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Drawing;
-using System.Windows.Forms;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Core.WidgetManagement;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Drawing;
+using System.Runtime.InteropServices;
+using System.Windows.Forms;
 
 namespace ACAT.Lib.Core.PanelManagement
 {
@@ -171,7 +136,7 @@ namespace ACAT.Lib.Core.PanelManagement
         public event EventHandler EvtAutoRepositionScannerStop;
 
         /// <summary>
-        /// Gets or sets whether the position of the scanner is in 
+        /// Gets or sets whether the position of the scanner is in
         /// the default position or whether the caller is going to
         /// manually position the scanner.
         /// </summary>
@@ -234,7 +199,7 @@ namespace ACAT.Lib.Core.PanelManagement
         /// </summary>
         public void Initialize()
         {
-            _rootWidget = _scannerCommon.GetRootWidget();
+            _rootWidget = _scannerCommon.RootWidget;
         }
 
         /// <summary>
@@ -266,7 +231,9 @@ namespace ACAT.Lib.Core.PanelManagement
         {
             ScaleFactor = 1.0f;
             ScaleForm(ScaleFactor);
-            Windows.SetWindowPositionAndNotify(_form, Windows.WindowPosition.MiddleRight);
+            AutoPosition = true;
+            Context.AppWindowPosition = Windows.WindowPosition.MiddleRight;
+            Windows.SetWindowPositionAndNotify(_form, Context.AppWindowPosition);
         }
 
         /// <summary>
@@ -291,6 +258,9 @@ namespace ACAT.Lib.Core.PanelManagement
             Log.Debug("Saving window position as " + Context.AppWindowPosition);
             prefs.ScannerPosition = CoreGlobals.AppPreferences.ScannerPosition = Context.AppWindowPosition;
             prefs.Save();
+
+            AutoPosition = true; 
+
             CoreGlobals.AppPreferences.NotifyPreferencesChanged();
             Log.Debug("scale factor saved is:" + prefs.ScannerScaleFactor);
         }
@@ -328,31 +298,27 @@ namespace ACAT.Lib.Core.PanelManagement
             ScaleForm(ScaleFactor);
         }
 
+
+
         /// <summary>
         /// Scales the scanner to indicated scale factor
         /// </summary>
         /// <param name="scaleFactor">the scale factor</param>
         public void ScaleForm(float scaleFactor)
         {
-            Log.Debug("Enter");
-            _form.Invoke(new MethodInvoker(delegate
-            {
-                Log.Debug("scaleFactor: " + scaleFactor);
+            Log.Debug("Enter. scaleFactor: " + scaleFactor);
 
-                _form.SuspendLayout();
+            var newSize = new Size(Convert.ToInt32(_originalSize.Width * scaleFactor), Convert.ToInt32(_originalSize.Height * scaleFactor));
 
-                var newSize = new Size(Convert.ToInt32(_originalSize.Width * scaleFactor), Convert.ToInt32(_originalSize.Height * scaleFactor));
+            Log.Debug(_form.Name + "," + "scalefactor: " + scaleFactor + 
+                        "orig/new width: " + _originalSize.Width + ", " + newSize.Width + 
+                        "orig/new height: " + _originalSize.Height + ", " + newSize.Height);
 
-                Log.Debug(_form.Name + "," + "scalefactor: " + scaleFactor + "orig/new width: " +
-                          _originalSize.Width + ", " + newSize.Width + "orig/new height: " + _originalSize.Height + ", " +
-                          newSize.Height);
+            //_rootWidget.Dump();
 
-                _rootWidget.Dump();
-                _rootWidget.SetScaleFactor(scaleFactor);
-                _form.Size = newSize;
-                _form.Invalidate();
-                _form.ResumeLayout();
-            }));
+            _rootWidget.SetScaleFactor(scaleFactor);
+            _form.Size = newSize;
+
             Log.Debug("Exit");
         }
 

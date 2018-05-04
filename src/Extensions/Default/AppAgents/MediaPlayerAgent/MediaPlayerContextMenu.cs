@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="MediaPlayerContextMenu.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Extension;
+using ACAT.ACATResources;
 
 #region SupressStyleCopWarnings
 
@@ -61,13 +62,11 @@ using ACAT.Lib.Extension;
 namespace ACAT.Extensions.Default.AppAgents.MediaPlayer
 {
     /// <summary>
-    /// The contextual menu for the ACAT talk window
+    /// The contextual menu for the Windows Media Player Agent
     /// </summary>
-    ///
-    /// [Guid("1FEA0089-747A-4037-AA79-675D067FEA2C")]
     [DescriptorAttribute("1FEA0089-747A-4037-AA79-675D067FEA2C",
                             "MediaPlayerContextMenu",
-                            "Media Player Contextual Menu")]
+                            "Media Player Contextual AppMenu")]
     public partial class MediaPlayerContextMenu : MenuPanel
     {
         /// <summary>
@@ -76,7 +75,7 @@ namespace ACAT.Extensions.Default.AppAgents.MediaPlayer
         /// <param name="panelClass">Name of the scanner</param>
         /// <param name="panelTitle">Title of the menu</param>
         public MediaPlayerContextMenu(String panelClass, String panelTitle)
-            : base(panelClass, "Media Player")
+            : base(panelClass, R.GetString("MediaPlayer"))
         {
             WindowActivityMonitor.EvtWindowMonitorHeartbeat += WindowActivityMonitor_EvtWindowMonitorHeartbeat;
             Closing += MediaPlayerContextMenu_Closing;
@@ -99,7 +98,7 @@ namespace ACAT.Extensions.Default.AppAgents.MediaPlayer
         /// <param name="monitorInfo">fg window info</param>
         private void WindowActivityMonitor_EvtWindowMonitorHeartbeat(WindowActivityMonitorInfo monitorInfo)
         {
-            if (monitorInfo.Title == "Windows Media Player" && Windows.IsMaximized(monitorInfo.FgHwnd))
+            if ((monitorInfo.Title == R.GetString2("WindowsMediaPlayer") && Windows.IsMaximized(monitorInfo.FgHwnd)))
             {
                 if (ScannerCommon != null)
                 {

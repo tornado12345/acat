@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="FileBrowserAgent.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,54 +18,20 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
+using ACAT.ACATResources;
+using ACAT.Lib.Core.AgentManagement;
+using ACAT.Lib.Core.AgentManagement.TextInterface;
+using ACAT.Lib.Core.PanelManagement;
+using ACAT.Lib.Core.PreferencesManagement;
+using ACAT.Lib.Core.UserManagement;
+using ACAT.Lib.Core.Utility;
+using ACAT.Lib.Extension;
 using System;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Threading;
 using System.Windows.Automation;
 using System.Windows.Forms;
-using ACAT.Lib.Core.AgentManagement;
-using ACAT.Lib.Core.AgentManagement.TextInterface;
-using ACAT.Lib.Core.PanelManagement;
-using ACAT.Lib.Core.UserManagement;
-using ACAT.Lib.Core.Utility;
-using ACAT.Lib.Extension;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
 
 namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
 {
@@ -80,8 +46,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
     /// the caller can act on the file.
     /// </summary>
     [DescriptorAttribute("EC2EA972-934B-4EE0-A909-3EA0140AC738",
-                        "FileBrowser Agent",
-                        "Displays list of files from favorite folders and allows user to operate on them")]
+                        "File Browser",
+                        "FileBrowserAgent",
+                        "Open/delete files from favorite folders")]
     internal class FileBrowserAgent : FunctionalAgentBase
     {
         /// <summary>
@@ -118,6 +85,13 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         }
 
         /// <summary>
+        /// Gets or sets the action on the file. What should
+        /// we do when the user selects.  Maps to the FileOperation
+        /// enum
+        /// </summary>
+        public String Action { get; set; }
+
+        /// <summary>
         /// Gets or sets the action verb that will be used in the
         /// confirmation box when the user selects a file
         /// </summary>
@@ -148,14 +122,6 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         public String[] IncludeFileExtensions { get; set; }
 
         /// <summary>
-        /// Gets or sets whether the action of selecting a file
-        /// should open it. If set to false, the agent
-        /// will provide an option to the user to open or
-        /// delete the file
-        /// </summary>
-        public bool SelectActionOpen { get; set; }
-
-        /// <summary>
         /// Gets the name of the file that the user selected
         /// </summary>
         public String SelectedFile { get; private set; }
@@ -174,15 +140,19 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
             _fileBrowserScanner = Context.AppPanelManager.CreatePanel("FileBrowserScanner") as FileBrowserScanner;
             if (_fileBrowserScanner != null)
             {
+                IsClosing = false;
+
                 subscribeToEvents();
 
-                _fileBrowserScanner.SelectActionOpen = SelectActionOpen;
+                _fileBrowserScanner.Action = parseAction(Action);
                 _fileBrowserScanner.IncludeFileExtensions = IncludeFileExtensions;
                 _fileBrowserScanner.ExcludeFileExtensions = ExcludeFileExtensions;
                 _fileBrowserScanner.Folders = Folders;
                 _fileBrowserScanner.ActionVerb = ActionVerb;
-                _fileBrowserScanner.DateFormat = Settings.FileBrowserDateFormat;
                 SelectedFile = String.Empty;
+
+                IsActive = true;
+
                 Context.AppPanelManager.ShowDialog(_fileBrowserScanner);
 
                 return true;
@@ -196,21 +166,21 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         /// to determine the 'enabled' state.
         /// </summary>
         /// <param name="arg">info about the scanner button</param>
-        public override void CheckWidgetEnabled(CheckEnabledArgs arg)
+        public override void CheckCommandEnabled(CommandEnabledArg arg)
         {
             arg.Handled = true;
 
-            switch (arg.Widget.SubClass)
+            switch (arg.Command)
             {
-                case "PunctuationScanner":
-                case "NumberScanner":
+                case "CmdPunctuationScanner":
+                case "CmdNumberScanner":
                     arg.Enabled = true;
                     break;
 
                 default:
                     if (_fileBrowserScanner != null)
                     {
-                        _fileBrowserScanner.CheckWidgetEnabled(arg);
+                        _fileBrowserScanner.CheckCommandEnabled(arg);
                     }
                     if (!arg.Handled)
                     {
@@ -222,6 +192,24 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         }
 
         /// <summary>
+        /// Returns the default settings
+        /// </summary>
+        /// <returns>Default settings object</returns>
+        public override IPreferences GetDefaultPreferences()
+        {
+            return PreferencesBase.LoadDefaults<FileBrowserSettings>();
+        }
+
+        /// <summary>
+        /// Returns the settings for this agent
+        /// </summary>
+        /// <returns>settings object</returns>
+        public override IPreferences GetPreferences()
+        {
+            return Settings;
+        }
+
+        /// <summary>
         /// Invoked when the focus changes either in the active window or when the
         /// active window itself changes.
         /// </summary>
@@ -229,6 +217,12 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         /// <param name="handled">was this handled</param>
         public override void OnFocusChanged(WindowActivityMonitorInfo monitorInfo, ref bool handled)
         {
+            if (IsClosing)
+            {
+                Log.Debug("IsClosing is true.  Will not handle the focus change");
+                return;
+            }
+
             base.OnFocusChanged(monitorInfo, ref handled);
 
             handled = true;
@@ -259,14 +253,6 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
 
             switch (command)
             {
-                case "clearText":
-                    _fileBrowserScanner.ClearFilter();
-                    break;
-
-                case "CmdFileBrowserToggle":
-                    quitFileBrowser();
-                    break;
-
                 default:
                     Log.Debug(command);
                     if (_fileBrowserScanner != null)
@@ -311,7 +297,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
             if (String.IsNullOrEmpty(FileUtils.GetFileAssociationForExtension(extension)))
             {
                 if (!DialogUtils.ConfirmScanner(PanelManager.Instance.GetCurrentForm(),
-                                "No program associated with file. Open anyway?"))
+                                R.GetString("NoProgramAssociatedWithFile")))
                 {
                     return;
                 }
@@ -406,7 +392,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
             if (extension.Equals(".txt", StringComparison.InvariantCultureIgnoreCase) || String.IsNullOrEmpty(extension))
             {
                 String name = Path.GetFileName(fileName);
-                String title = name + " - Notepad";
+                String title = name + " - " + R.GetString2("Notepad");
                 Log.Debug("Finding window " + title);
                 IntPtr h = User32Interop.FindWindow(null, title);
                 Log.Debug("handle h = " + h);
@@ -473,11 +459,22 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         {
             ActionVerb = "Open";
             IncludeFileExtensions = new String[] { };
-            ExcludeFileExtensions = (!String.IsNullOrEmpty(Settings.FileBrowserExcludeFileExtensions)) ?
-                                        Settings.FileBrowserExcludeFileExtensions.Split(';') : new String[] { };
+            ExcludeFileExtensions = (!String.IsNullOrEmpty(Settings.ExcludeFileExtensions)) ?
+                                        Settings.ExcludeFileExtensions.Split(';') : new String[] { };
             Folders = Settings.GetFavoriteFolders();
             AutoLaunchFile = false;
-            SelectActionOpen = !Settings.FileBrowserShowFileOperationsMenu;
+        }
+
+        private FileBrowserScanner.FileOperation parseAction(String action)
+        {
+            FileBrowserScanner.FileOperation result;
+
+            if (Enum.TryParse(action, true, out result))
+            {
+                return result;
+            }
+
+            return FileBrowserScanner.FileOperation.UserChoice;
         }
 
         /// <summary>
@@ -485,6 +482,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         /// </summary>
         private void quit()
         {
+            IsClosing = true;
+            IsActive = false;
+
             closeScanner();
             Close();
         }
@@ -496,7 +496,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         {
             if (_fileBrowserScanner != null)
             {
-                if (DialogUtils.ConfirmScanner(PanelManager.Instance.GetCurrentForm(), "Close?"))
+                if (DialogUtils.ConfirmScanner(PanelManager.Instance.GetCurrentForm(), R.GetString("CloseQ")))
                 {
                     ExitCode = CompletionCode.None;
                     quit();

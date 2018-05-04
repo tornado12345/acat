@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="AnimationWidget.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,47 +18,11 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Xml;
 using ACAT.Lib.Core.Interpreter;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Core.WidgetManagement;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Xml;
 
 namespace ACAT.Lib.Core.AnimationManagement
 {
@@ -94,11 +58,6 @@ namespace ACAT.Lib.Core.AnimationManagement
         public PCode OnHighlightOn;
 
         /// <summary>
-        /// Code to execute when mouse is clicked on the widget
-        /// </summary>
-        public PCode OnMouseClick;
-
-        /// <summary>
         /// Code to execute if this widget is selected
         /// </summary>
         public PCode OnSelect;
@@ -128,8 +87,7 @@ namespace ACAT.Lib.Core.AnimationManagement
             OnBack = new PCode();
             OnHighlightOn = new PCode();
             OnHighlightOff = new PCode();
-            OnMouseClick = new PCode();
-            HesitateTime = CoreGlobals.AppPreferences.HesitateTime;
+            HesitateTime = CoreGlobals.AppPreferences.FirstPauseTime;
             CoreGlobals.AppPreferences.EvtPreferencesChanged += AppPreferences_EvtPreferencesChanged;
         }
 
@@ -168,10 +126,7 @@ namespace ACAT.Lib.Core.AnimationManagement
             var onHighlightOff = XmlUtils.GetXMLAttrString(xmlNode, "onHighlightOff");
             _parser.Parse(onHighlightOff, ref OnHighlightOff);
 
-            var onMouseClick = XmlUtils.GetXMLAttrString(xmlNode, "onMouseClick");
-            _parser.Parse(onMouseClick, ref OnMouseClick);
-
-            _hesitateTimeVariableName = XmlUtils.GetXMLAttrString(xmlNode, "hesitateTime");
+            _hesitateTimeVariableName = XmlUtils.GetXMLAttrString(xmlNode, "firstPauseTime");
             HesitateTime = CoreGlobals.AppPreferences.ResolveVariableInt(_hesitateTimeVariableName, 0, 0);
         }
 

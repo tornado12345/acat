@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="ShowPhraseSpeakHandler.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,47 +18,11 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Diagnostics.CodeAnalysis;
 using ACAT.Lib.Core.AgentManagement;
 using ACAT.Lib.Core.Extensions;
 using ACAT.Lib.Core.PanelManagement;
 using ACAT.Lib.Core.PanelManagement.CommandDispatcher;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
 
 namespace ACAT.Lib.Extension.CommandHandlers
 {
@@ -88,25 +52,67 @@ namespace ACAT.Lib.Extension.CommandHandlers
 
             handled = true;
 
-            handlePhraseSpeak();
+            switch (Command)
+            {
+                case "CmdPhraseSpeak":
+                    if (!Context.AppAgentMgr.CanActivateFunctionalAgent())
+                    {
+                        return false;
+                    }
+
+                    handlePhraseSpeak();
+                    break;
+
+                case "CmdShowEditPhrasesSettings":
+                    if (!Context.AppAgentMgr.CanActivateFunctionalAgent())
+                    {
+                        return false;
+                    }
+
+                    handlePhrasesEdit();
+                    break;
+
+                default:
+                    handled = false;
+                    retVal = false;
+                    break;
+            }
 
             return retVal;
         }
 
         /// <summary>
-        /// Launches the phrase speak agent
+        /// Launches the phrase speak agent to edit phrases
+        /// </summary>
+        private async void handlePhrasesEdit()
+        {
+            IApplicationAgent agent = Context.AppAgentMgr.GetAgentByCategory("PhraseSpeakAgent");
+            if (agent != null)
+            {
+                if (agent is IExtension)
+                {
+                    agent.GetInvoker().SetValue("PhraseListEdit", true);
+                }
+
+                await Context.AppAgentMgr.ActivateAgent(agent as IFunctionalAgent);
+            }
+        }
+
+        /// <summary>
+        /// Launches the phrase speak agent to display list of phrases
         /// </summary>
         private async void handlePhraseSpeak()
         {
-            Context.AppTalkWindowManager.CloseTalkWindow(true);
-            IApplicationAgent agent = Context.AppAgentMgr.GetAgentByName("Phrase Speak Agent");
+            IApplicationAgent agent = Context.AppAgentMgr.GetAgentByCategory("PhraseSpeakAgent");
             if (agent != null)
             {
                 if (agent is IExtension)
                 {
                     var invoker = agent.GetInvoker();
                     invoker.SetValue("EnableSearch", true);
+                    invoker.SetValue("PhraseListEdit", false);
                 }
+
                 await Context.AppAgentMgr.ActivateAgent(agent as IFunctionalAgent);
             }
         }

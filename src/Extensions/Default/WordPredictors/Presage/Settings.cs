@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
-// <copyright file="PresageWordPredictor.cs" company="Intel Corporation">
+// <copyright file="Settings.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,25 +18,37 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
+using ACAT.Extensions.Default.WordPredictors.PresageBase;
 using System;
-using ACAT.Lib.Core.Utility;
+using ACAT.Lib.Core.PreferencesManagement;
 
-namespace ACAT.Extensions.Default.WordPredictors.PresageWCF
+namespace ACAT.Extensions.Default.WordPredictors.Neutral.Presage
 {
     /// <summary>
     /// Preference settings for the Presage word predictor
     /// </summary>
     [Serializable]
-    public class Settings : PreferencesBase
+    public class Settings : PresageSettingsBase
     {
-        [NonSerialized]
-        public static String PreferencesFilePath;
-
-        public String ConfigFileName = "presage.xml";
+        /// <summary>
+        /// Name of the NGRAM database file
+        /// </summary>
         public String DatabaseFileName = "database.db";
-        public String LearningDatabaseFileName = "learn.db";
-        public bool StartPresageIfNotRunning = true;
 
+        /// <summary>
+        /// Name of the learnt database file
+        /// </summary>
+        public String LearningDatabaseFileName = "learn.db";
+
+        /// <summary>
+        /// Set this to true if the language uses diacritics
+        /// </summary>
+        [BoolDescriptor("Set this to true if Presage database for this language requires encoding translation", true)]
+        public bool UseDefaultEncoding = true;
+
+        [StringDescriptor("A string of characters that should be filtered out from the predicted words, eg, punctuations")]
+        public String FilterChars = String.Empty;
+        
         /// <summary>
         /// Loads the settings from the settings file
         /// </summary>
@@ -52,7 +64,7 @@ namespace ACAT.Extensions.Default.WordPredictors.PresageWCF
         /// Saves the settings to the settings file
         /// </summary>
         /// <returns>true on success</returns>
-        override public bool Save()
+        public override bool Save()
         {
             return Save<Settings>(this, PreferencesFilePath);
         }

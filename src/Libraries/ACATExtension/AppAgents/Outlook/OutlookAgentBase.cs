@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="OutlookAgentBase.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,53 +18,18 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Threading;
-using System.Windows.Automation;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.AgentManagement;
 using ACAT.Lib.Core.AgentManagement.TextInterface;
 using ACAT.Lib.Core.PanelManagement;
 using ACAT.Lib.Core.Utility;
 using Microsoft.Win32;
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Windows.Automation;
+using System.Windows.Forms;
 using Task = System.Threading.Tasks.Task;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
 
 namespace ACAT.Lib.Extension.AppAgents.Outlook
 {
@@ -190,9 +155,9 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
         /// will depend on the current context.
         /// </summary>
         /// <param name="arg">contains info about the widget</param>
-        public override void CheckWidgetEnabled(CheckEnabledArgs arg)
+        public override void CheckCommandEnabled(CommandEnabledArg arg)
         {
-            switch (arg.Widget.SubClass)
+            switch (arg.Command)
             {
                 case "SwitchTo":
                     arg.Enabled = isTopLevelWindow(outlookWindowType);
@@ -204,7 +169,7 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
                     arg.Handled = true;
                     break;
 
-                case "ApptScheduling":
+                case "ApptAttendees":
                     arg.Enabled = (outlookWindowType != OutlookWindowTypes.AppointmentScheduling);
                     arg.Handled = true;
                     break;
@@ -217,28 +182,21 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
         /// <param name="monitorInfo">Foreground window info</param>
         public override void OnContextMenuRequest(WindowActivityMonitorInfo monitorInfo)
         {
-            if (autoSwitchScanners)
+            String panel;
+            String title = PanelTitle;
+
+            switch (outlookWindowType)
             {
-                String panel;
-                String title = PanelTitle;
+                case OutlookWindowTypes.OpenNote:
+                    panel = "OutlookOpenNoteContextMenu";
+                    break;
 
-                switch (outlookWindowType)
-                {
-                    case OutlookWindowTypes.OpenNote:
-                        panel = "OutlookOpenNoteContextMenu";
-                        break;
-
-                    default:
-                        panel = getContextualMenuForWindow(outlookWindowType, ref title);
-                        break;
-                }
-
-                showPanel(this, new PanelRequestEventArgs(panel, title, monitorInfo));
+                default:
+                    panel = getContextualMenuForWindow(outlookWindowType, ref title);
+                    break;
             }
-            else
-            {
-                showPanel(this, new PanelRequestEventArgs("OutlookContextMenu", PanelTitle, monitorInfo));
-            }
+
+            showPanel(this, new PanelRequestEventArgs(panel, title, monitorInfo));
         }
 
         /// <summary>
@@ -366,7 +324,7 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
 
                 case "EmailBrowseDelete":
                 case "EmailInboxDelete":
-                    if (DialogUtils.ConfirmScanner("Confirm Delete?"))
+                    if (DialogUtils.ConfirmScanner(R.GetString("ConfirmDelete")))
                     {
                         AgentManager.Instance.Keyboard.Send(Keys.LControlKey, Keys.D);
                     }
@@ -399,7 +357,7 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
                     break;
 
                 case "EmailSend":
-                    if (DialogUtils.ConfirmScanner("Confirm Send?"))
+                    if (DialogUtils.ConfirmScanner(R.GetString("ConfirmSend")))
                     {
                         AgentManager.Instance.Keyboard.Send(Keys.LMenu, Keys.S);
                     }
@@ -449,7 +407,7 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
                     break;
 
                 case "ApptSend":
-                    if (DialogUtils.ConfirmScanner("Confirm Send?"))
+                    if (DialogUtils.ConfirmScanner(R.GetString("ConfirmSend")))
                     {
                         AgentManager.Instance.Keyboard.Send(Keys.LMenu, Keys.S);
                     }
@@ -457,7 +415,7 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
                     break;
 
                 case "ApptDelete":
-                    if (DialogUtils.ConfirmScanner("Confirm Delete?"))
+                    if (DialogUtils.ConfirmScanner(R.GetString("ConfirmDelete")))
                     {
                         AgentManager.Instance.Keyboard.Send(Keys.F10);
                         AgentManager.Instance.Keyboard.Send(Keys.H);
@@ -534,7 +492,7 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
 
                 case "SwitchTo":
                     showPanel(this, new PanelRequestEventArgs("OutlookMailBoxesContextMenu",
-                                                                "Switch To",
+                                                                R.GetString("SwitchTo"),
                                                                 WindowActivityMonitor.GetForegroundWindowInfo(),
                                                                 true));
                     break;
@@ -609,7 +567,7 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
             }
 
             Thread.Sleep(500);
-            EnumWindows.RestoreFocusToTopWindow();
+            EnumWindows.RestoreFocusToTopWindowOnDesktop();
             Thread.Sleep(500);
 
             AgentManager.Instance.Keyboard.Send(Keys.F10);
@@ -622,7 +580,7 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
             for (int ii = 0; ii < 10; ii++)
             {
                 var info1 = WindowActivityMonitor.GetForegroundWindowInfo();
-                if (info1.Title == "Insert File")
+                if (String.Compare(info1.Title, R.GetString2("OutlookAttachFileWindowTitle"), true) == 0)
                 {
                     Log.Debug("YES!  Found Attach file window");
                     var automationElement = AgentUtils.GetElementOrAncestorByAutomationId(
@@ -665,6 +623,15 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
         {
             Log.Debug();
 
+            if (isMessageBodyField(outlookControlSubType))
+            {
+                // force to use keylogger interface. EditControlTextInterface
+                // acts weirdly.  It doesn't track text changes and the 'currentword'
+                // is always set to the word Message.
+                handled = false;
+                return null;
+            }
+
             return new OutlookAgentTextInterface(handle, focusedElement, ref handled);
         }
 
@@ -685,6 +652,7 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
 
             TextControlAgentBase textInterface;
 
+            Log.Debug("outlookcontrolsubtype: " + outlookControlSubType);
             if (isMessageBodyField(outlookControlSubType))
             {
                 Log.Debug("creating outlookagentkeylogger with learn, spell and abbr" + outlookControlSubType);
@@ -724,64 +692,64 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
             {
                 case OutlookWindowTypes.EmailMessage:
                     scannerName = "OutlookBrowseEmailContextMenu";
-                    title = "Mail";
+                    title = R.GetString("Mail");
                     break;
 
                 case OutlookWindowTypes.NewEmailMessage:
                     scannerName = "OutlookNewEmailContextMenu";
-                    title = "Mail";
+                    title = R.GetString("Mail");
                     break;
 
                 case OutlookWindowTypes.Inbox:
                     scannerName = "OutlookContextMenu";
-                    title = "Mail";
+                    title = R.GetString("Mail");
                     break;
 
                 case OutlookWindowTypes.Calendar:
                     scannerName = "OutlookContextMenu";
-                    title = "Calendar";
+                    title = R.GetString("Calendar");
                     break;
 
                 case OutlookWindowTypes.Tasks:
                     scannerName = "OutlookContextMenu";
-                    title = "Tasks";
+                    title = R.GetString("Tasks");
                     break;
 
                 case OutlookWindowTypes.Contacts:
                     scannerName = "OutlookContextMenu";
-                    title = "Contacts";
+                    title = R.GetString("Contacts");
                     break;
 
                 case OutlookWindowTypes.Notes:
                     scannerName = "OutlookContextMenu";
-                    title = "Notes";
+                    title = R.GetString("Notes");
                     break;
 
                 case OutlookWindowTypes.OpenNote:
                     scannerName = PanelClasses.Alphabet;
-                    title = "Note";
+                    title = R.GetString("Note");
                     break;
 
                 case OutlookWindowTypes.AppointmentScheduling:
                 case OutlookWindowTypes.OpenAppointment:
                     scannerName = "OutlookOpenAppointmentContextMenu";
-                    title = "Appointment";
+                    title = R.GetString("Appointment");
                     break;
 
                 case OutlookWindowTypes.OpenContact:
                     scannerName = "OutlookOpenContactContextMenu";
-                    title = "Contact";
+                    title = R.GetString("Contact");
                     break;
 
                 case OutlookWindowTypes.OpenTask:
                     scannerName = "OutlookOpenTaskContextMenu";
-                    title = "Task";
+                    title = R.GetString("Task");
                     break;
 
                 case OutlookWindowTypes.AddressBookDetails:
                 case OutlookWindowTypes.AddressBook:
                     scannerName = "OutlookAddressBookContextMenu";
-                    title = "Addr. Book";
+                    title = R.GetString("AddrBook");
                     break;
 
                 default:
@@ -998,6 +966,10 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
                     inspector = new OutlookInspector2010();
                     break;
 
+                case 15: // Outlook 2013
+                    inspector = new OutlookInspector2013();
+                    break;
+
                 default:
                     inspector = new DefaultOutlookInspector();
                     break;
@@ -1013,14 +985,14 @@ namespace ACAT.Lib.Extension.AppAgents.Outlook
         /// <returns>the task</returns>
         private async Task getFileToAttach()
         {
-            IApplicationAgent fileBrowserAgent = Context.AppAgentMgr.GetAgentByName("FileBrowser Agent");
+            IApplicationAgent fileBrowserAgent = Context.AppAgentMgr.GetAgentByCategory("FileBrowserAgent");
             if (fileBrowserAgent == null)
             {
                 return;
             }
 
             fileBrowserAgent.GetInvoker().SetValue("AutoLaunchFile", false);
-            fileBrowserAgent.GetInvoker().SetValue("SelectActionOpen", true);
+            fileBrowserAgent.GetInvoker().SetValue("Action", "Open");
             fileBrowserAgent.GetInvoker().SetValue("IncludeFileExtensions", new[] { "*.", "txt", "doc", "docx" });
             fileBrowserAgent.GetInvoker().SetValue("ActionVerb", "Attach");
 

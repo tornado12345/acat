@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="WidgetAttribute.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,49 +18,14 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
+using ACAT.ACATResources;
+using ACAT.Lib.Core.Interpreter;
+using ACAT.Lib.Core.Utility;
 using System;
 using System.Collections;
-using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Windows.Forms;
 using System.Xml;
-using ACAT.Lib.Core.Interpreter;
-using ACAT.Lib.Core.Utility;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
 
 namespace ACAT.Lib.Core.WidgetManagement
 {
@@ -143,6 +108,11 @@ namespace ACAT.Lib.Core.WidgetManagement
         public String Name { get; set; }
 
         /// <summary>
+        /// Value when the Shift key is pressed
+        /// </summary>
+        public String ShiftValue { get; set; }
+
+        /// <summary>
         /// Tooltip help string
         /// </summary>
         public String ToolTip { get; set; }
@@ -208,12 +178,18 @@ namespace ACAT.Lib.Core.WidgetManagement
         {
             Name = XmlUtils.GetXMLAttrString(node, "name");
             Label = XmlUtils.GetXMLAttrString(node, "label");
+            if (Label.Length > 1)
+            {
+                Label = R.GetString(Label);
+            }
+
             Value = XmlUtils.GetXMLAttrString(node, "value");
             FontSize = XmlUtils.GetXMLAttrInt(node, "fontsize", FontSize);
             FontName = XmlUtils.GetXMLAttrString(node, "fontname", FontName);
             FontBold = XmlUtils.GetXMLAttrBool(node, "bold", FontBold);
             IsVirtualKey = XmlUtils.GetXMLAttrBool(node, "virtualkey", false);
             ToolTip = XmlUtils.GetXMLAttrString(node, "toolTip", String.Empty);
+            ShiftValue = XmlUtils.GetXMLAttrString(node, "shiftValue", String.Empty);
             MouseClickActuate = XmlUtils.GetXMLAttrBool(node, "mouseClickActuate", true);
             String onMouseClick = XmlUtils.GetXMLAttrString(node, "onMouseClick");
             if (!String.IsNullOrEmpty(onMouseClick))

@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="TextDocumentReader.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,51 +18,15 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
+using ACAT.Lib.Core.Utility;
+using Microsoft.Office.Interop.Word;
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
-using ACAT.Lib.Core.Utility;
-using Microsoft.Office.Interop.Word;
 using Application = Microsoft.Office.Interop.Word.Application;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
 
 namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
 {
@@ -98,7 +62,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
             }
             catch (Exception ex)
             {
-                Log.Debug("Error reading from file " + fileName + ", ex: " + ex.ToString());
+                Log.Debug("Error reading from file " + fileName + ", ex: " + ex);
             }
 
             return strSpeechBuffer;
@@ -116,7 +80,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
             String retVal = String.Empty;
             try
             {
-                Application wordApp = null;
+                Application wordApp;
                 try
                 {
                     wordApp = (Application)Marshal.GetActiveObject("Word.Application");
@@ -178,7 +142,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
                 }
 
                 Revisions revs = doc.Revisions;
-                String text = String.Empty;
+                var text = String.Empty;
                 if (revs.Count != 0)
                 {
                     WdRevisionsView v = doc.ActiveWindow.View.RevisionsView;
@@ -207,7 +171,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
                 }
                 else
                 {
-                    ((Microsoft.Office.Interop.Word._Application)wordApp).Quit();
+                    wordApp.Quit();
                 }
             }
             catch (Exception ex)

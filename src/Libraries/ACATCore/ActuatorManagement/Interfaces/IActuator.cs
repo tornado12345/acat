@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="IActuator.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,42 +18,12 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
+using ACAT.Lib.Core.Extensions;
+using ACAT.Lib.Core.PreferencesManagement;
+using ACAT.Lib.Core.Utility;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Windows.Forms;
-using System.Xml;
-using ACAT.Lib.Core.Utility;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
 
 namespace ACAT.Lib.Core.ActuatorManagement
 {
@@ -97,7 +67,7 @@ namespace ACAT.Lib.Core.ActuatorManagement
     /// Actutators must implement this interface.  An actuator contains one or
     /// more switches and raises events when the switches are actuated.
     /// </summary>
-    public interface IActuator : IDisposable
+    public interface IActuator : ISupportsPreferences, IExtension, IDisposable
     {
         /// <summary>
         /// Raised when one of the switches in this actuator is engaged
@@ -115,24 +85,14 @@ namespace ACAT.Lib.Core.ActuatorManagement
         event SwitchTriggered EvtSwitchTriggered;
 
         /// <summary>
-        /// Gets the ACAT descriptor
-        /// </summary>
-        IDescriptor Descriptor { get; }
-
-        /// <summary>
         /// Indicates whether the acutator is enabled or not
         /// </summary>
         bool Enabled { get; set; }
 
         /// <summary>
-        /// Gets or sets the name of the actuator
+        /// Gets the name of the actuator
         /// </summary>
-        String Name { get; set; }
-
-        /// <summary>
-        /// Does this actuator support a settings dialog?
-        /// </summary>
-        bool SupportsSettingsDialog { get; }
+        String Name { get; }
 
         /// <summary>
         /// Gets a collection of switches that are a part of this actuator
@@ -146,12 +106,6 @@ namespace ACAT.Lib.Core.ActuatorManagement
         IActuatorSwitch CreateSwitch();
 
         /// <summary>
-        /// Returns the form that is the settings dialog for the actuator
-        /// </summary>
-        /// <returns>the form</returns>
-        Form GetSettingsDialog();
-
-        /// <summary>
         /// Initializes the actuator
         /// </summary>
         /// <returns>true on success</returns>
@@ -162,11 +116,16 @@ namespace ACAT.Lib.Core.ActuatorManagement
         /// </summary>
         /// <param name="actuatorNode">The xml fragment for the actuator</param>
         /// <returns>true on success</returns>
-        bool Load(XmlNode actuatorNode);
+        bool Load(IEnumerable<SwitchSetting> switchSettings);
 
         /// <summary>
-        /// Invoked if the calibration is canceled before the time period
-        /// expires
+        /// Invoked when the user presses the button on the
+        /// calibration dialog
+        /// </summary>
+        void OnCalibrationAction();
+
+        /// <summary>
+        /// Invoked if the calibration is canceled
         /// </summary>
         void OnCalibrationCanceled();
 
@@ -177,10 +136,27 @@ namespace ACAT.Lib.Core.ActuatorManagement
         void OnCalibrationPeriodExpired();
 
         /// <summary>
+        /// Invoked when the application quits
+        /// </summary>
+        void OnQuitApplication();
+
+        /// <summary>
+        /// The Actutor should register switches when this function is invoked
+        /// </summary>
+        void OnRegisterSwitches();
+
+        /// <summary>
         /// Pauses the actuator.  No events will be raised from the acutator
         /// when paused
         /// </summary>
         void Pause();
+
+        /// <summary>
+        /// Unloads the specified switch
+        /// </summary>
+        /// <param name="name">Switch to unload</param>
+        /// <returns></returns>
+        bool RemoveSwitch(String name);
 
         /// <summary>
         /// Resumes actuator.  Will resume raising events

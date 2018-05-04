@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="FileBrowserScanner.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,14 +18,7 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Drawing;
-using System.IO;
-using System.Linq;
-using System.Security.Permissions;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.ActuatorManagement;
 using ACAT.Lib.Core.AgentManagement;
 using ACAT.Lib.Core.Extensions;
@@ -36,43 +29,16 @@ using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Core.WidgetManagement;
 using ACAT.Lib.Core.Widgets;
 using ACAT.Lib.Extension;
+using ACAT.Lib.Extension.CommandHandlers;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Security.Permissions;
+using System.Windows.Forms;
 using Font = System.Drawing.Font;
 using Windows = ACAT.Lib.Core.Utility.Windows;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
 
 namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
 {
@@ -106,24 +72,14 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         private readonly KeyboardActuator _keyboardActuator;
 
         /// <summary>
-        /// Status bar for the scanner form
+        /// The scanner common object
         /// </summary>
-        private readonly StatusBar _statusBar = new StatusBar();
-
-        /// <summary>
-        /// Displays the state of the Ctrl/Shift/Alt keys
-        /// </summary>
-        private readonly StatusBarPanel _statusBarPanelSort = new StatusBarPanel();
+        private readonly ScannerCommon _scannerCommon;
 
         /// <summary>
         /// List of all files
         /// </summary>
         private List<FileInfo> _allFilesList;
-
-        /// <summary>
-        /// Scanner form with which this form is docked
-        /// </summary>
-        private Form _dockedWithForm;
 
         /// <summary>
         /// How may files to display per page
@@ -171,11 +127,6 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         private int _pageStartIndex;
 
         /// <summary>
-        /// The scanner common object
-        /// </summary>
-        private ScannerCommon _scannerCommon;
-
-        /// <summary>
         /// Widget that the user clicks to resort
         /// </summary>
         private Widget _sortButton;
@@ -205,8 +156,10 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         /// </summary>
         public FileBrowserScanner()
         {
+            _scannerCommon = new ScannerCommon(this);
+
             InitializeComponent();
-            ActionVerb = "Open";
+            ActionVerb = R.GetString("Open");
             PanelClass = "FileBrowserScanner";
 
             _allFilesList = new List<FileInfo>();
@@ -234,9 +187,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
                 _keyboardActuator.EvtKeyPress += _keyboardActuator_EvtKeyPress;
             }
 
-            _dispatcher = new RunCommandDispatcher(this);
+            _dispatcher = new Dispatcher(this);
 
-            createStatusBar();
+            statusStrip.SizingGrip = false;
         }
 
         /// <summary>
@@ -263,11 +216,12 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         /// <summary>
         /// What kinda operation?
         /// </summary>
-        private enum FileOperation
+        internal enum FileOperation
         {
             None,
             Open,
-            Delete
+            Delete,
+            UserChoice
         }
 
         /// <summary>
@@ -356,18 +310,17 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         public String PanelClass { get; private set; }
 
         /// <summary>
+        /// Gets the PanelCommon object
+        /// </summary>
+        public IPanelCommon PanelCommon { get { return _scannerCommon; } }
+
+        /// <summary>
         /// Gets the scannercommon object
         /// </summary>
         public ScannerCommon ScannerCommon
         {
             get { return _scannerCommon; }
         }
-
-        /// <summary>
-        /// Gets or sets whether the file should be opened when
-        /// the user selects it.  If false, presents options
-        /// </summary>
-        public bool SelectActionOpen { get; set; }
 
         /// <summary>
         /// Gets the name of the file selected
@@ -391,6 +344,11 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         }
 
         /// <summary>
+        /// Gets or sets what kinda action on the file when the user selects it
+        /// </summary>
+        internal FileOperation Action { get; set; }
+
+        /// <summary>
         /// Set form styles
         /// </summary>
         protected override CreateParams CreateParams
@@ -407,35 +365,35 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         /// to determine the 'enabled' state.
         /// </summary>
         /// <param name="arg">info about the scanner button</param>
-        public bool CheckWidgetEnabled(CheckEnabledArgs arg)
+        public bool CheckCommandEnabled(CommandEnabledArg arg)
         {
             arg.Handled = true;
 
-            switch (arg.Widget.SubClass)
+            switch (arg.Command)
             {
-                case "PreviousPage":
+                case "CmdPrevPage":
                     arg.Enabled = (_pageNumber != 0);
                     break;
 
-                case "NextPage":
+                case "CmdNextPage":
                     arg.Enabled = (_numPages != 0 && (_pageNumber + 1) != _numPages);
                     break;
 
                 case "Back":
-                case "DeletePreviousWord":
-                case "ClearFilter":
+                case "CmdDeletePrevWord":
+                case "FileListClearFilter":
                     arg.Handled = true;
                     arg.Enabled = !IsFilterEmpty();
                     break;
 
-                case "Sort":
-                case "Search":
+                case "FileListSort":
+                case "FileListSearch":
                     arg.Handled = true;
                     arg.Enabled = (_fileList != null && _fileList.Any());
                     break;
 
-                case "PrevChar":
-                case "NextChar":
+                case "CmdPrevChar":
+                case "CmdNextChar":
                     arg.Handled = true;
                     arg.Enabled = true;
                     break;
@@ -455,28 +413,11 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         {
             Invoke(new MethodInvoker(delegate
             {
-                if (SearchFilter.Text.Length > 0 && DialogUtils.ConfirmScanner("Clear filter?"))
+                if (SearchFilter.Text.Length > 0 && DialogUtils.ConfirmScanner(R.GetString("ClearFilter")))
                 {
                     SearchFilter.Text = String.Empty;
                 }
             }));
-        }
-
-        /// <summary>
-        /// Creates a status bar for the scanner
-        /// </summary>
-        public void createStatusBar()
-        {
-            _statusBarPanelSort.BorderStyle = StatusBarPanelBorderStyle.None;
-            _statusBarPanelSort.AutoSize = StatusBarPanelAutoSize.Contents;
-            _statusBar.Panels.Add(_statusBarPanelSort);
-
-            _statusBar.SizingGrip = false;
-            _statusBar.ShowPanels = true;
-            _statusBar.Height = 30;
-            _statusBar.Margin = new Padding(4, 4, 4, 4);
-            _statusBar.Font = new Font("Arial", 16.0f);
-            Controls.Add(_statusBar);
         }
 
         /// <summary>
@@ -495,7 +436,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         /// <returns>true on success</returns>
         public bool Initialize(StartupArg startupArg)
         {
-            _scannerCommon = new ScannerCommon(this) { PositionSizeController = { AutoPosition = true } };
+            _scannerCommon.PositionSizeController.AutoPosition = true;
 
             if (!_scannerCommon.Initialize(startupArg))
             {
@@ -503,8 +444,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
                 return false;
             }
 
-            PanelManager.Instance.EvtScannerShow += Instance_EvtScannerShow;
-            PanelManager.Instance.EvtScannerClosed += Instance_EvtScannerClosed;
+            Windows.EvtWindowPositionChanged += Windows_EvtWindowPositionChanged;
 
             return true;
         }
@@ -519,7 +459,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
 
             if (_handleCreated)
             {
-                Invoke(new MethodInvoker(delegate()
+                Invoke(new MethodInvoker(delegate
                 {
                     retVal = (SearchFilter.Text.Length == 0);
                 }));
@@ -541,7 +481,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         /// </summary>
         public void OnPause()
         {
-            _scannerCommon.GetAnimationManager().Pause();
+            PanelCommon.AnimationManager.Pause();
         }
 
         /// <summary>
@@ -559,7 +499,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         /// </summary>
         public void OnResume()
         {
-            _scannerCommon.GetAnimationManager().Resume();
+            _scannerCommon.PositionSizeController.AutoSetPosition();
+
+            PanelCommon.AnimationManager.Resume();
         }
 
         /// <summary>
@@ -569,6 +511,12 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         /// <param name="handled"></param>
         public void OnRunCommand(string command, ref bool handled)
         {
+            switch (command)
+            {
+                case "CmdGoBack":
+                    close();
+                    break;
+            }
         }
 
         /// <summary>
@@ -622,19 +570,28 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         }
 
         /// <summary>
+        /// Size of the client changed
+        /// </summary>
+        /// <param name="e">event args</param>
+        protected override void OnClientSizeChanged(EventArgs e)
+        {
+            base.OnClientSizeChanged(e);
+            _scannerCommon.OnClientSizeChanged();
+        }
+
+        /// <summary>
         /// Clean up
         /// </summary>
         /// <param name="e">event args</param>
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             _scannerCommon.OnFormClosing(e);
+
+            Windows.EvtWindowPositionChanged -= Windows_EvtWindowPositionChanged;
             SearchFilter.TextChanged -= SearchFilter_TextChanged;
             SortOrderIcon.Click -= SortOrderIcon_Click;
 
             removeWatchdogs();
-
-            PanelManager.Instance.EvtScannerShow -= Instance_EvtScannerShow;
-            PanelManager.Instance.EvtScannerClosed -= Instance_EvtScannerClosed;
 
             _keyboardActuator.EvtKeyPress -= _keyboardActuator_EvtKeyPress;
             base.OnFormClosing(e);
@@ -670,7 +627,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
                 int c = e.KeyChar;
                 if (c == 27)
                 {
-                    EvtDone.BeginInvoke(false, null, null);
+                    close();
                 }
             }
         }
@@ -687,14 +644,46 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         }
 
         /// <summary>
+        /// Confirm and close the scanner
+        /// </summary>
+        private void close()
+        {
+            if (EvtDone != null)
+            {
+                EvtDone.BeginInvoke(false, null, null);
+            }
+            else
+            {
+                if (DialogUtils.ConfirmScanner(PanelManager.Instance.GetCurrentForm(), R.GetString("CloseQ")))
+                {
+                    Windows.CloseForm(this);
+                }
+            }
+        }
+
+        /// <summary>
         /// Docks this scanner to the companian scanner
         /// </summary>
         /// <param name="scanner">companian scanner</param>
         private void dockToScanner(Form scanner)
         {
+            if (!Windows.GetVisible(this))
+            {
+                return;
+            }
+
             if (scanner is IScannerPanel)
             {
-                Windows.DockWithScanner(this, scanner, Context.AppWindowPosition);
+                if (((IPanel)scanner).PanelCommon.DisplayMode != DisplayModeTypes.Popup)
+                {
+                    Windows.DockWithScanner(this, scanner, Context.AppWindowPosition);
+                    Windows.SetTopMost(scanner);
+                }
+            }
+
+            if (Left < 0)
+            {
+                Left = 0;
             }
         }
 
@@ -740,25 +729,27 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         /// </summary>
         private void FileBrowserScanner_Load(object sender, EventArgs e)
         {
+            Text = R.GetString("FileBrowser");
+
             enableWatchdogs();
 
             _scannerCommon.OnLoad();
 
             var list = new List<Widget>();
-            _scannerCommon.GetRootWidget().Finder.FindChild(typeof(TabStopScannerButton), list);
+            PanelCommon.RootWidget.Finder.FindChild(typeof(TabStopScannerButton), list);
 
             _tabStopButtonCount = list.Count;
 
-            _sortOrderWidget = _scannerCommon.GetRootWidget().Finder.FindChild("SortOrderIcon");
-            _pageNumberWidget = _scannerCommon.GetRootWidget().Finder.FindChild("PageNumber");
-            _sortButton = _scannerCommon.GetRootWidget().Finder.FindChild("ButtonSort");
+            _sortOrderWidget = PanelCommon.RootWidget.Finder.FindChild("SortOrderIcon");
+            _pageNumberWidget = PanelCommon.RootWidget.Finder.FindChild("PageNumber");
+            _sortButton = PanelCommon.RootWidget.Finder.FindChild("ButtonSort");
 
             SearchFilter.TextChanged += SearchFilter_TextChanged;
             SortOrderIcon.Click += SortOrderIcon_Click;
 
             loadFiles();
 
-            _scannerCommon.GetRootWidget().HighlightOff();
+            PanelCommon.RootWidget.HighlightOff();
 
             var panel = PanelManager.Instance.GetCurrentPanel();
             if (panel != null)
@@ -768,20 +759,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
 
             _handleCreated = true;
 
-            _scannerCommon.GetAnimationManager().Start(_scannerCommon.GetRootWidget());
-        }
-
-        /// <summary>
-        /// IF there is an alphabet scanner, keep it docked with this form
-        /// </summary>
-        /// <param name="sender">event sender</param>
-        /// <param name="e">event args</param>
-        private void FileBrowserScanner_LocationChanged(object sender, EventArgs e)
-        {
-            if (_dockedWithForm != null)
-            {
-                dockToScanner(_dockedWithForm);
-            }
+            PanelCommon.AnimationManager.Start(PanelCommon.RootWidget);
         }
 
         /// <summary>
@@ -910,7 +888,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         /// Prompt the user to make a selection on what to do with the
         /// selected file.  Open it or delete it.
         /// </summary>
-        /// <param name="FileInfo">file info</param>
+        /// <param name="fileInfo">file info</param>
         /// <returns>selected operation</returns>
         private FileOperation getFileOperationFromUser(FileInfo fileInfo)
         {
@@ -983,7 +961,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
             if (_pageNumber < _numPages - 1)
             {
                 int index = _pageStartIndex + _entriesPerPage;
-                if (index < _allFilesList.Count())
+                if (index < _allFilesList.Count)
                 {
                     _pageStartIndex += _entriesPerPage;
                     _pageNumber++;
@@ -1014,39 +992,29 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         /// <summary>
         /// Delete the file
         /// </summary>
-        /// <param name="itemTag">info about the file</param>
+        /// <param name="fileInfo">info about the file</param>
         private void handleDeleteFile(FileInfo fileInfo)
         {
-            Windows.SetText(SearchFilter, String.Empty);
-            File.Delete(fileInfo.FullName);
-            loadFiles();
-        }
-
-        /// <summary>
-        /// Perform action on the file
-        /// </summary>
-        /// <param name="operation">what to do?</param>
-        /// <param name="itemTag">File info</param>
-        private void handleFileOperation(FileOperation operation, FileInfo fileInfo)
-        {
-            switch (operation)
+            if (DialogUtils.ConfirmScanner(String.Format(R.GetString("DeleteFileQ"), fileInfo.Name)))
             {
-                case FileOperation.Open:
-                    SelectedFile = fileInfo.FullName;
-                    if (EvtFileOpen != null)
-                    {
-                        EvtFileOpen.BeginInvoke(this, new EventArgs(), null, null);
-                    }
-
-                    break;
-
-                case FileOperation.Delete:
-                    handleDeleteFile(fileInfo);
-                    break;
+                Windows.SetText(SearchFilter, String.Empty);
+                File.Delete(fileInfo.FullName);
+                loadFiles();
             }
         }
 
-        /// <summary>
+        private void handleOpenFile(FileInfo fileInfo)
+        {
+            if (DialogUtils.ConfirmScanner(String.Format(R.GetString("OpenFileQ"), fileInfo.Name)))
+            {
+                SelectedFile = fileInfo.FullName;
+                if (EvtFileOpen != null)
+                {
+                    EvtFileOpen.BeginInvoke(this, new EventArgs(), null, null);
+                }
+            }
+        }
+
         /// Handle actuation of a widget - navigate, select file
         /// etc depending on what the widget represents
         /// </summary>
@@ -1064,22 +1032,19 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
                 handled = true;
                 switch (widget.Value)
                 {
-                    case "@Quit":
-                        if (EvtDone != null)
-                        {
-                            EvtDone.BeginInvoke(false, null, null);
-                        }
+                    case "@CmdGoBack":
+                        close();
                         break;
 
                     case "@FileListSort":
                         switchSortOrder();
                         break;
 
-                    case "@FileListNextPage":
+                    case "@CmdNextPage":
                         gotoNextPage();
                         break;
 
-                    case "@FileListPrevPage":
+                    case "@CmdPrevPage":
                         gotoPreviousPage();
                         break;
 
@@ -1106,7 +1071,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         /// </summary>
         private void highlightOff()
         {
-            _scannerCommon.GetRootWidget().HighlightOff();
+            PanelCommon.RootWidget.HighlightOff();
         }
 
         /// <summary>
@@ -1151,39 +1116,6 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         }
 
         /// <summary>
-        /// Event handler for when a scanner closes.  Reposition this scanner
-        /// to its default position
-        /// </summary>
-        /// <param name="sender">event sender</param>
-        /// <param name="arg">event args</param>
-        private void Instance_EvtScannerClosed(object sender, ScannerCloseEventArg arg)
-        {
-            if (arg.Scanner != this)
-            {
-                if (_dockedWithForm == arg.Scanner)
-                {
-                    _dockedWithForm = null;
-                }
-                _scannerCommon.PositionSizeController.AutoSetPosition();
-            }
-        }
-
-        /// <summary>
-        /// Invoked when the companian scanner is shown. Dock
-        /// this scanner with the companian.
-        /// </summary>
-        /// <param name="sender">event sender</param>
-        /// <param name="e">event args</param>
-        private void Instance_EvtScannerShow(object sender, ScannerShowEventArg arg)
-        {
-            if (arg.Scanner != this)
-            {
-                _dockedWithForm = arg.Scanner.Form;
-                dockToScanner(arg.Scanner.Form);
-            }
-        }
-
-        /// <summary>
         /// Look at filters, load files from the  specified folders
         /// </summary>
         private void loadFiles()
@@ -1208,33 +1140,31 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         {
             bool doHighlightOff = true;
 
-            if (fileInfo != null && File.Exists(fileInfo.FullName))
+            if (fileInfo == null || !File.Exists(fileInfo.FullName))
             {
-                FileOperation operation = FileOperation.None;
-                if (SelectActionOpen)
-                {
-                    if (DialogUtils.ConfirmScanner(ActionVerb + " " + fileInfo.Name + "?"))
-                    {
-                        operation = FileOperation.Open;
-                    }
-                }
-                else
-                {
-                    operation = getFileOperationFromUser(fileInfo);
-                }
+                return true;
+            }
 
-                if (operation != FileOperation.None)
-                {
-                    handleFileOperation(operation, fileInfo);
-                    if (operation == FileOperation.Open)
-                    {
-                        doHighlightOff = false;
-                    }
-                }
-                else
-                {
-                    SelectedFile = String.Empty;
-                }
+            var operation = (Action == FileOperation.UserChoice) ?
+                                        getFileOperationFromUser(fileInfo) :
+                                        Action;
+
+            if (operation == FileOperation.Open)
+            {
+                handleOpenFile(fileInfo);
+            }
+            else if (operation == FileOperation.Delete)
+            {
+                handleDeleteFile(fileInfo);
+            }
+
+            if (operation == FileOperation.Open)
+            {
+                doHighlightOff = false;
+            }
+            else
+            {
+                SelectedFile = String.Empty;
             }
 
             return doHighlightOff;
@@ -1246,9 +1176,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
         private void refreshFileList()
         {
             var list = new List<Widget>();
-            _scannerCommon.GetRootWidget().Finder.FindChild(typeof(TabStopScannerButton), list);
+            PanelCommon.RootWidget.Finder.FindChild(typeof(TabStopScannerButton), list);
 
-            int count = list.Count();
+            int count = list.Count;
             if (count == 0)
             {
                 return;
@@ -1275,7 +1205,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
             if (!_fileList.Any())
             {
                 (list[0] as TabStopScannerButton).SetTabStops(0.0f, new float[] { 100 });
-                list[0].SetText("\t------------- NO FILES FOUND -------------");
+                list[0].SetText("\t" + R.GetString("NoFilesFound"));
                 return;
             }
 
@@ -1294,7 +1224,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
 
                 var str = getMeasuredString(graphics, tabStopScannerButton.UIControl.Font, tabStop, name);
 
-                list[ii].SetText(str + "\t" + _fileList[jj].LastWriteTime.ToString(DateFormat));
+                string shortDateFormatString = System.Globalization.CultureInfo.DefaultThreadCurrentUICulture.DateTimeFormat.ShortDatePattern;
+
+                list[ii].SetText(str + "\t" + _fileList[jj].LastWriteTime.ToString(shortDateFormatString));
             }
 
             image.Dispose();
@@ -1355,7 +1287,6 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
             FormClosing += FileBrowserScanner_FormClosing;
             Shown += FileBrowserScanner_Shown;
             KeyDown += FileBrowserScanner_KeyDown;
-            LocationChanged += FileBrowserScanner_LocationChanged;
         }
 
         /// <summary>
@@ -1433,7 +1364,8 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
 
             if (_pageNumberWidget != null)
             {
-                text = (_fileList.Any()) ? "Page " + (_pageNumber + 1) + " of " + _numPages : String.Empty;
+                var str = String.Format(R.GetString("PageNofM"), (_pageNumber + 1), _numPages);
+                text = (_fileList.Any()) ? str : String.Empty;
                 _pageNumberWidget.SetText(text);
             }
         }
@@ -1447,30 +1379,96 @@ namespace ACAT.Extensions.Default.FunctionalAgents.FileBrowserAgent
 
             if (!_fileList.Any())
             {
-                _statusBarPanelSort.Text = String.Empty;
+                toolStripStatusLabel1.Text = String.Empty;
                 return;
             }
 
             switch (_sortOrder)
             {
                 case SortOrder.AtoZ:
-                    text = "Sort Order:  ALPHABETICAL";
+                    text = R.GetString("SortOrderAlphabetical");
                     break;
 
                 case SortOrder.ZtoA:
-                    text = "Sort Order:  REVERSE ALPHABETICAL";
+                    text = R.GetString("SortOrderReverseAlphabetical");
                     break;
 
                 case SortOrder.DateAscending:
-                    text = "Sort Order:  CHRONOLOGICAL";
+                    text = R.GetString("SortOrderChronological");
                     break;
 
                 case SortOrder.DateDescending:
-                    text = "Sort Order:  REVERSE CHRONOLOGICAL";
+                    text = R.GetString("SortOrderReverseChronological");
                     break;
             }
 
-            _statusBarPanelSort.Text = text;
+            toolStripStatusLabel1.Text = text;
+        }
+
+        /// <summary>
+        /// Position of the scanner changed.  If there is a companion
+        /// scanner, dock to it
+        /// </summary>
+        /// <param name="form">the form</param>
+        /// <param name="position">its position</param>
+        private void Windows_EvtWindowPositionChanged(Form form, Windows.WindowPosition position)
+        {
+            if (form != this)
+            {
+                dockToScanner(form);
+            }
+        }
+
+        /// <summary>
+        /// Handler for dispatching commands
+        /// </summary>
+        private class CommandHandler : RunCommandHandler
+        {
+            /// <summary>
+            /// Initializes a new instance of the class.
+            /// </summary>
+            /// <param name="cmd">the command to execute</param>
+            public CommandHandler(String cmd)
+                : base(cmd)
+            {
+            }
+
+            /// <summary>
+            /// Executes the command
+            /// </summary>
+            /// <param name="handled">true if it was handled</param>
+            /// <returns>true on success</returns>
+            public override bool Execute(ref bool handled)
+            {
+                handled = true;
+
+                var form = Dispatcher.Scanner.Form as FileBrowserScanner;
+
+                switch (Command)
+                {
+                    case "CmdGoBack":
+                        form.close();
+                        break;
+                }
+
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Command dispatcher
+        /// </summary>
+        private class Dispatcher : DefaultCommandDispatcher
+        {
+            /// <summary>
+            /// Initializes a new instance of the class.
+            /// </summary>
+            /// <param name="panel">the scanner object</param>
+            public Dispatcher(IScannerPanel panel)
+                : base(panel)
+            {
+                Commands.Add(new CommandHandler("CmdGoBack"));
+            }
         }
     }
 }

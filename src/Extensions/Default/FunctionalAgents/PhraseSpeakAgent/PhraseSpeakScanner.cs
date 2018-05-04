@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="PhraseSpeakScanner.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,13 +18,7 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Drawing;
-using System.Linq;
-using System.Security.Permissions;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.AbbreviationsManagement;
 using ACAT.Lib.Core.ActuatorManagement;
 using ACAT.Lib.Core.AgentManagement;
@@ -36,41 +30,14 @@ using ACAT.Lib.Core.TTSManagement;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Core.WidgetManagement;
 using ACAT.Lib.Core.Widgets;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using ACAT.Lib.Extension;
+using ACAT.Lib.Extension.CommandHandlers;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
+using System.Security.Permissions;
+using System.Windows.Forms;
 
 namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
 {
@@ -78,8 +45,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
     /// This class represents the scanner that displays a list
     /// of Phrases from which the user can select a Phrase to
     /// convert to speech.  The list of phrases comes from
-    /// the abbreviations list.  It selects those abbreviations that
-    /// are marked "Speak" and displays them in the list.
+    /// the Phrases file (Phrases.xml).
     /// </summary>
     [DescriptorAttribute("D80D5448-13D7-472A-AF73-4C326F1CACAE",
                         "PhraseSpeakScanner",
@@ -102,29 +68,14 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         private readonly KeyboardActuator _keyboardActuator;
 
         /// <summary>
-        /// Status bar for the scanner form
+        /// the scanner common object
         /// </summary>
-        private readonly StatusBar _statusBar = new StatusBar();
+        private readonly ScannerCommon _scannerCommon;
 
         /// <summary>
-        /// Displays the state of the Alt key
+        /// list of all phrases as a IEnumerable
         /// </summary>
-        private readonly StatusBarPanel _statusBarPanelSort = new StatusBarPanel();
-
-        /// <summary>
-        /// List of abbreviations
-        /// </summary>
-        private List<Abbreviation> _abbreviationsList;
-
-        /// <summary>
-        /// list of all abbreviations as a IEnumerable
-        /// </summary>
-        private IEnumerable<Abbreviation> _allAbbreviationsList;
-
-        /// <summary>
-        /// Companion scanner form to which this form is docked
-        /// </summary>
-        private Form _dockedWithForm;
+        private IEnumerable<Phrase> _allPhrasesList;
 
         /// <summary>
         /// How many entries can be displayed at a time
@@ -152,9 +103,19 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         private int _pageStartIndex;
 
         /// <summary>
-        /// the scanner common object
+        /// List of phrases
         /// </summary>
-        private ScannerCommon _scannerCommon;
+        private List<Phrase> _phrasesList;
+
+        /// <summary>
+        /// Is the search button visible?
+        /// </summary>
+        private bool _searchButtonVisible;
+
+        /// <summary>
+        /// The widget representing the search button
+        /// </summary>
+        private Widget _searchButtonWidget;
 
         /// <summary>
         /// Widget that the user clicks to resort
@@ -162,9 +123,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         private Widget _sortButton;
 
         /// <summary>
-        /// sort order of abbr display
+        /// sort order of phrase display
         /// </summary>
-        private SortOrder _sortOrder = SortOrder.AtoZ;
+        private SortOrder _sortOrder = SortOrder.None;
 
         /// <summary>
         /// Widget that represents the sort order
@@ -181,7 +142,11 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         /// </summary>
         public PhraseSpeakScanner()
         {
+            _scannerCommon = new ScannerCommon(this);
+
             InitializeComponent();
+
+            _searchButtonVisible = true;
 
             PanelClass = "PhraseSpeakScanner";
             _pageStartIndex = 0;
@@ -200,9 +165,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
                 _keyboardActuator.EvtKeyPress += _keyboardActuator_EvtKeyPress;
             }
 
-            _dispatcher = new RunCommandDispatcher(this);
+            _dispatcher = new Dispatcher(this);
 
-            createStatusBar();
+            statusStrip1.SizingGrip = false;
         }
 
         /// <summary>
@@ -226,6 +191,11 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         /// </summary>
         private enum SortOrder
         {
+            /// <summary>
+            /// Not sorted.  Natural order
+            /// </summary>
+            None,
+
             /// <summary>
             /// Sort alphabetically
             /// </summary>
@@ -254,11 +224,6 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         }
 
         /// <summary>
-        /// Get/sets whether "Search" be enabled or not
-        /// </summary>
-        public bool EnableSearch { get; set; }
-
-        /// <summary>
         /// Gets the form
         /// </summary>
         public Form Form
@@ -267,9 +232,14 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         }
 
         /// <summary>
-        /// Gets the Panel Class of the abbreviations scanner
+        /// Gets the Panel Class of the phrases scanner
         /// </summary>
         public String PanelClass { get; private set; }
+
+        /// <summary>
+        /// Gets the PanelCommon object
+        /// </summary>
+        public IPanelCommon PanelCommon { get { return _scannerCommon; } }
 
         /// <summary>
         /// Gets the scannercommon object
@@ -277,6 +247,26 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         public ScannerCommon ScannerCommon
         {
             get { return _scannerCommon; }
+        }
+
+        /// <summary>
+        /// Gets or sets whether the search button should be shown
+        /// </summary>
+        public bool ShowSearchButton
+        {
+            get
+            {
+                return _searchButtonVisible;
+            }
+            set
+            {
+                _searchButtonVisible = value;
+
+                if (_searchButtonWidget != null)
+                {
+                    setSearchButtonVisibility(_searchButtonVisible);
+                }
+            }
         }
 
         /// <summary>
@@ -296,7 +286,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         }
 
         /// <summary>
-        /// Set the form style of the abbr scanner
+        /// Set the form style of the phrase scanner
         /// </summary>
         protected override CreateParams CreateParams
         {
@@ -308,47 +298,16 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         }
 
         /// <summary>
-        /// Invoked to check if a scanner button should be enabled.  Uses context
-        /// to determine the 'enabled' state.
+        /// Invoked to check if a widget on a scanner needs to
+        /// be enabled or not.  This depends on the context.
+        /// We are going to handle this in the EvtCommandEnabled handler
         /// </summary>
-        /// <param name="arg">info about the scanner button</param>
-        public bool CheckWidgetEnabled(CheckEnabledArgs arg)
+        /// <param name="arg">Contextual information</param>
+        /// <returns>true on success</returns>
+        public bool CheckCommandEnabled(CommandEnabledArg arg)
         {
-            arg.Handled = true;
-
-            switch (arg.Widget.SubClass)
-            {
-                case "PreviousPage":
-                    arg.Enabled = (_pageNumber != 0);
-                    break;
-
-                case "NextPage":
-                    arg.Enabled = (_numPages != 0 && (_pageNumber + 1) != _numPages);
-                    break;
-
-                case "Back":
-                case "DeletePreviousWord":
-                case "ClearFilter":
-                    arg.Handled = true;
-                    arg.Enabled = !IsFilterEmpty();
-                    break;
-
-                case "Sort":
-                    arg.Handled = true;
-                    arg.Enabled = (_abbreviationsList != null && _abbreviationsList.Any());
-                    break;
-
-                case "Search":
-                    arg.Handled = true;
-                    arg.Enabled = (EnableSearch && _abbreviationsList != null && _abbreviationsList.Any());
-                    break;
-
-                default:
-                    arg.Handled = false;
-                    break;
-            }
-
-            return false;
+            OnCommandEnabled(arg);
+            return true;
         }
 
         /// <summary>
@@ -356,30 +315,13 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         /// </summary>
         public void ClearFilter()
         {
-            Invoke(new MethodInvoker(delegate()
+            Invoke(new MethodInvoker(delegate
             {
-                if (SearchFilter.Text.Length > 0 && PhraseSpeakAgent.Confirm("Clear filter?"))
+                if (SearchFilter.Text.Length > 0 && PhraseSpeakAgent.Confirm(R.GetString("ClearFilter")))
                 {
                     SearchFilter.Text = String.Empty;
                 }
             }));
-        }
-
-        /// <summary>
-        /// Creates a status bar for the scanner
-        /// </summary>
-        public void createStatusBar()
-        {
-            _statusBarPanelSort.BorderStyle = StatusBarPanelBorderStyle.None;
-            _statusBarPanelSort.AutoSize = StatusBarPanelAutoSize.Contents;
-            _statusBar.Panels.Add(_statusBarPanelSort);
-
-            _statusBar.SizingGrip = false;
-            _statusBar.ShowPanels = true;
-            _statusBar.Height = 30;
-            _statusBar.Margin = new Padding(4, 4, 4, 4);
-            _statusBar.Font = new Font("Arial", 16.0f);
-            Controls.Add(_statusBar);
         }
 
         /// <summary>
@@ -399,10 +341,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         /// <returns>true on success</returns>
         public bool Initialize(StartupArg startupArg)
         {
-            _scannerCommon = new ScannerCommon(this)
-            {
-                PositionSizeController = { AutoPosition = true }
-            };
+            _scannerCommon.PositionSizeController.AutoPosition = true;
 
             if (!_scannerCommon.Initialize(startupArg))
             {
@@ -410,8 +349,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
                 return false;
             }
 
-            PanelManager.Instance.EvtScannerShow += Instance_EvtScannerShow;
-            PanelManager.Instance.EvtScannerClosed += Instance_EvtScannerClosed;
+            Windows.EvtWindowPositionChanged += Windows_EvtWindowPositionChanged;
+
+            _searchButtonWidget = PanelCommon.RootWidget.Finder.FindChild(SearchFilterIcon.Handle);
 
             return true;
         }
@@ -423,7 +363,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         public bool IsFilterEmpty()
         {
             bool retVal = true;
-            Invoke(new MethodInvoker(delegate()
+            Invoke(new MethodInvoker(delegate
             {
                 retVal = (SearchFilter.Text.Length == 0);
             }));
@@ -431,16 +371,17 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         }
 
         /// <summary>
-        /// Get the list of abbreviations, selects those whose
-        /// mode is "Speak" and populates the list
+        /// Get the list of and populates the list
         /// </summary>
-        public void LoadAbbreviations()
+        public void LoadPhrases()
         {
             Windows.SetText(SearchFilter, String.Empty);
 
-            _allAbbreviationsList = Context.AppAbbreviations.AbbrevationList.Where(abbr => abbr.Mode == Abbreviation.AbbreviationMode.Speak);
+            var phrases = Phrases.Load();
 
-            _abbreviationsList = _allAbbreviationsList.ToList();
+            _allPhrasesList = phrases.PhraseList;
+
+            _phrasesList = _allPhrasesList.ToList();
 
             refreshPhrasesList();
         }
@@ -458,7 +399,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         /// </summary>
         public void OnPause()
         {
-            _scannerCommon.GetAnimationManager().Pause();
+            PanelCommon.AnimationManager.Pause();
         }
 
         /// <summary>
@@ -476,7 +417,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         /// </summary>
         public void OnResume()
         {
-            _scannerCommon.GetAnimationManager().Resume();
+            _scannerCommon.PositionSizeController.AutoSetPosition();
+
+            PanelCommon.AnimationManager.Resume();
         }
 
         /// <summary>
@@ -486,6 +429,12 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         /// <param name="handled"></param>
         public void OnRunCommand(string command, ref bool handled)
         {
+            switch (command)
+            {
+                case "CmdGoBack":
+                    close();
+                    break;
+            }
         }
 
         /// <summary>
@@ -504,7 +453,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         public void Pause()
         {
             _keyboardActuator.EvtKeyPress -= _keyboardActuator_EvtKeyPress;
-            _scannerCommon.GetAnimationManager().Pause();
+            PanelCommon.AnimationManager.Pause();
         }
 
         /// <summary>
@@ -513,7 +462,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         public void Resume()
         {
             _keyboardActuator.EvtKeyPress += _keyboardActuator_EvtKeyPress;
-            _scannerCommon.GetAnimationManager().Resume();
+            PanelCommon.AnimationManager.Resume();
         }
 
         /// <summary>
@@ -526,6 +475,16 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         }
 
         /// <summary>
+        /// Size of the client changed
+        /// </summary>
+        /// <param name="e">event args</param>
+        protected override void OnClientSizeChanged(EventArgs e)
+        {
+            base.OnClientSizeChanged(e);
+            _scannerCommon.OnClientSizeChanged();
+        }
+
+        /// <summary>
         /// Invoked when the form is closing. Release
         /// resources
         /// </summary>
@@ -535,8 +494,8 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
             _scannerCommon.OnFormClosing(e);
             removeWatchdogs();
 
-            PanelManager.Instance.EvtScannerShow -= Instance_EvtScannerShow;
-            PanelManager.Instance.EvtScannerClosed -= Instance_EvtScannerClosed;
+            PhraseSpeakAgent.Instance.EvtCommandEnabled -= OnCommandEnabled;
+            Windows.EvtWindowPositionChanged -= Windows_EvtWindowPositionChanged;
 
             _keyboardActuator.EvtKeyPress -= _keyboardActuator_EvtKeyPress;
             base.OnFormClosing(e);
@@ -572,7 +531,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
                 int c = e.KeyChar;
                 if (c == 27)
                 {
-                    EvtDone.BeginInvoke(false, null, null);
+                    close();
                 }
             }
         }
@@ -589,14 +548,46 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         }
 
         /// <summary>
+        /// Confirm and close the scanner
+        /// </summary>
+        private void close()
+        {
+            if (EvtDone != null)
+            {
+                EvtDone.BeginInvoke(false, null, null);
+            }
+            else
+            {
+                if (DialogUtils.ConfirmScanner(PanelManager.Instance.GetCurrentForm(), R.GetString("CloseQ")))
+                {
+                    Windows.CloseForm(this);
+                }
+            }
+        }
+
+        /// <summary>
         /// Docks this form to the active scanner
         /// </summary>
         /// <param name="scanner"></param>
         private void dockToScanner(Form scanner)
         {
+            if (!Windows.GetVisible(this))
+            {
+                return;
+            }
+
             if (scanner is IScannerPanel)
             {
-                Windows.DockWithScanner(this, scanner, Context.AppWindowPosition);
+                if (((IPanel)scanner).PanelCommon.DisplayMode != DisplayModeTypes.Popup)
+                {
+                    Windows.DockWithScanner(this, scanner, Context.AppWindowPosition);
+                    Windows.SetTopMost(scanner);
+                }
+            }
+
+            if (Left < 0)
+            {
+                Left = 0;
             }
         }
 
@@ -615,14 +606,54 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         /// If there is a search filter, show only phrases that match
         /// the filter
         /// </summary>
-        /// <param name="abbrList">abbr list</param>
+        /// <param name="phraseList">phrase list</param>
         /// <param name="filter">search filter</param>
         /// <returns>list with matching abbrs</returns>
-        private List<Abbreviation> filterAbbreviations(IEnumerable<Abbreviation> abbrList, String filter)
+        private List<Phrase> filterPhrases(IEnumerable<Phrase> phraseList, String filter)
         {
             var trimFilter = filter.Trim();
 
-            return abbrList.Where(abbr => includeAbbr(abbr, trimFilter)).ToList();
+            return phraseList.Where(phrase => includePhrase(phrase, trimFilter)).ToList();
+        }
+
+        /// <summary>
+        /// Returns string that graphically fits into the specified width.  If it
+        /// doesn't, curtails the string and adds ellipses
+        /// </summary>
+        /// <param name="graphics">Graphics object used to mesaure width of string</param>
+        /// <param name="font">font to use</param>
+        /// <param name="width">width to fit in</param>
+        /// <param name="inputString">input string</param>
+        /// <returns>output string that fits</returns>
+        private String getMeasuredString(Graphics graphics, Font font, int width, String inputString)
+        {
+            int chop = 5;
+
+            var str = inputString;
+
+            try
+            {
+                while (true)
+                {
+                    SizeF sf = graphics.MeasureString(str, font);
+
+                    if (sf.Width > width * ScannerCommon.PositionSizeController.ScaleFactor)
+                    {
+                        str = inputString.Substring(0, inputString.Length - chop) + "...";
+                        chop += 5;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            }
+            catch
+            {
+                str = inputString;
+            }
+
+            return str;
         }
 
         /// <summary>
@@ -633,7 +664,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
             if (_pageNumber < _numPages - 1)
             {
                 int index = _pageStartIndex + _entriesPerPage;
-                if (index < _allAbbreviationsList.Count())
+                if (index < _allPhrasesList.Count())
                 {
                     _pageStartIndex += _entriesPerPage;
                     _pageNumber++;
@@ -669,11 +700,15 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         /// <param name="handled">true if handled</param>
         private void handleWidgetSelection(Widget widget, ref bool handled)
         {
-            // the user actuated an abbreviation in the list
-            if (widget.UserData is Abbreviation)
+            // the user actuated an phrase in the list
+            if (widget.UserData is Phrase)
             {
-                Abbreviation a = (Abbreviation)widget.UserData;
-                TTSManager.Instance.ActiveEngine.Speak(a.Expansion);
+                Phrase phrase = (Phrase)widget.UserData;
+
+                TTSManager.Instance.ActiveEngine.Stop();
+
+                int bookmark;
+                TTSManager.Instance.ActiveEngine.SpeakAsync(phrase.Text, out bookmark);
                 handled = true;
             }
             else
@@ -681,30 +716,27 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
                 handled = true;
                 switch (widget.Value)
                 {
-                    case "@Quit":
-                        if (EvtDone != null)
-                        {
-                            EvtDone.BeginInvoke(false, null, null);
-                        }
+                    case "@CmdGoBack":
+                        close();
                         break;
 
-                    case "@AbbrListSort":
+                    case "@PhraseListSort":
                         switchSortOrder();
                         break;
 
-                    case "@AbbrListNextPage":
+                    case "@CmdNextPage":
                         gotoNextPage();
                         break;
 
-                    case "@AbbrListPrevPage":
+                    case "@CmdPrevPage":
                         gotoPreviousPage();
                         break;
 
-                    case "@AbbrListClearFilter":
+                    case "@PhraseListClearFilter":
                         ClearFilter();
                         break;
 
-                    case "@AbbrListSearch":
+                    case "@PhraseListSearch":
                         if (EvtShowScanner != null)
                         {
                             EvtShowScanner.BeginInvoke(null, null, null, null);
@@ -723,21 +755,21 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         /// </summary>
         private void highlightOff()
         {
-            _scannerCommon.GetRootWidget().HighlightOff();
+            PanelCommon.RootWidget.HighlightOff();
         }
 
         /// <summary>
-        /// Matchs the abbr expansion with the filter and tells
+        /// Matchs the phrase expansion with the filter and tells
         /// whether there is a match or not.
         /// </summary>
-        /// <param name="abbr">abbr</param>
+        /// <param name="phrase">phrase</param>
         /// <param name="filter">search filter</param>
         /// <returns>true on match</returns>
-        private bool includeAbbr(Abbreviation abbr, String filter)
+        private bool includePhrase(Phrase phrase, String filter)
         {
             bool add = true;
 
-            if (!String.IsNullOrEmpty(filter) && !abbr.Expansion.StartsWith(filter, StringComparison.InvariantCultureIgnoreCase))
+            if (!String.IsNullOrEmpty(filter) && !phrase.Text.StartsWith(filter, StringComparison.InvariantCultureIgnoreCase))
             {
                 add = false;
             }
@@ -746,35 +778,57 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         }
 
         /// <summary>
-        /// Event handler for when a scanner closes.  Reposition this scanner
-        /// to its default position
+        /// Event handler to check if widget is to be enabled
         /// </summary>
-        /// <param name="sender">event sender</param>
         /// <param name="arg">event args</param>
-        private void Instance_EvtScannerClosed(object sender, ScannerCloseEventArg arg)
+        private void OnCommandEnabled(CommandEnabledArg arg)
         {
-            if (arg.Scanner != this)
+            if (!Windows.GetVisible(this))
             {
-                if (_dockedWithForm == arg.Scanner)
-                {
-                    _dockedWithForm = null;
-                }
-                _scannerCommon.PositionSizeController.AutoSetPosition();
+                arg.Handled = false;
+                return;
             }
-        }
 
-        /// <summary>
-        /// Displayed when the alphaet scanner is displayed. Dock
-        /// this form with the currently active scanner
-        /// </summary>
-        /// <param name="sender">event sender</param>
-        /// <param name="arg">event arg</param>
-        private void Instance_EvtScannerShow(object sender, ScannerShowEventArg arg)
-        {
-            if (arg.Scanner != this)
+            arg.Handled = true;
+
+            switch (arg.Command)
             {
-                _dockedWithForm = arg.Scanner.Form;
-                dockToScanner(arg.Scanner.Form);
+                case "CmdPunctuationScanner":
+                case "CmdNumberScanner":
+                case "CmdCursorScanner":
+                    arg.Enabled = true;
+                    break;
+
+                case "CmdPrevPage":
+                    arg.Enabled = (_pageNumber != 0);
+                    break;
+
+                case "CmdNextPage":
+                    arg.Enabled = (_numPages != 0 && (_pageNumber + 1) != _numPages);
+                    break;
+
+                case "Back":
+                case "CmdDeletePrevWord":
+                case "CmdPrevChar":
+                case "CmdNextChar":
+                case "PhraseListClearFilter":
+                    arg.Handled = true;
+                    arg.Enabled = !IsFilterEmpty();
+                    break;
+
+                case "PhraseListSort":
+                    arg.Handled = true;
+                    arg.Enabled = (_phrasesList != null && _phrasesList.Any());
+                    break;
+
+                case "PhraseListSearch":
+                    arg.Handled = true;
+                    arg.Enabled = (_searchButtonVisible && _phrasesList != null && _phrasesList.Any());
+                    break;
+
+                default:
+                    arg.Handled = false;
+                    break;
             }
         }
 
@@ -815,17 +869,19 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
             _scannerCommon.OnLoad();
 
             var list = new List<Widget>();
-            _scannerCommon.GetRootWidget().Finder.FindChild(typeof(TabStopScannerButton), list);
+            PanelCommon.RootWidget.Finder.FindChild(typeof(TabStopScannerButton), list);
 
-            _sortOrderWidget = _scannerCommon.GetRootWidget().Finder.FindChild("SortOrderIcon");
-            _pageNumberWidget = _scannerCommon.GetRootWidget().Finder.FindChild("PageNumber");
-            _sortButton = _scannerCommon.GetRootWidget().Finder.FindChild("ButtonSort");
+            _sortOrderWidget = PanelCommon.RootWidget.Finder.FindChild("SortOrderIcon");
+            _pageNumberWidget = PanelCommon.RootWidget.Finder.FindChild("PageNumber");
+            _sortButton = PanelCommon.RootWidget.Finder.FindChild("ButtonSort");
 
             SearchFilter.TextChanged += SearchFilter_TextChanged;
             SortOrderIcon.Click += SortOrderIcon_Click;
             Shown += PhraseSpeakScanner_Shown;
 
-            LoadAbbreviations();
+            PhraseSpeakAgent.Instance.EvtCommandEnabled += OnCommandEnabled;
+
+            LoadPhrases();
 
             updateButtonBar();
 
@@ -839,21 +895,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
                 dockToScanner(panel as Form);
             }
 
-            _scannerCommon.GetAnimationManager().Start(_scannerCommon.GetRootWidget());
-        }
-
-        /// <summary>
-        /// Event handler for when location of the form changes.
-        /// Disallow this an redock the form
-        /// </summary>
-        /// <param name="sender">event sender</param>
-        /// <param name="e">event arg</param>
-        private void PhraseSpeakScanner_LocationChanged(object sender, EventArgs e)
-        {
-            if (_dockedWithForm != null)
-            {
-                dockToScanner(_dockedWithForm);
-            }
+            PanelCommon.AnimationManager.Start(PanelCommon.RootWidget);
         }
 
         /// <summary>
@@ -864,20 +906,20 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         /// <param name="e">event arg</param>
         private void PhraseSpeakScanner_Shown(object sender, EventArgs e)
         {
-            Windows.SetForegroundWindow(this.Handle);
+            Windows.SetForegroundWindow(Handle);
             Windows.ClickOnWindow(this);
         }
 
         /// <summary>
-        /// Refreshes the list of abbreviations and displays the
-        /// current pageful of abbreviations in the UI.
+        /// Refreshes the list of phrases and displays the
+        /// current pageful of phrases in the UI.
         /// </summary>
         private void refreshPhrasesList()
         {
             var list = new List<Widget>();
-            _scannerCommon.GetRootWidget().Finder.FindChild(typeof(TabStopScannerButton), list);
+            PanelCommon.RootWidget.Finder.FindChild(typeof(TabStopScannerButton), list);
 
-            int count = list.Count();
+            int count = list.Count;
             if (count == 0)
             {
                 return;
@@ -890,9 +932,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
             }
 
             _entriesPerPage = count;
-            _numPages = _abbreviationsList.Count() / _entriesPerPage;
+            _numPages = _phrasesList.Count / _entriesPerPage;
 
-            if ((_abbreviationsList.Count() % _entriesPerPage) != 0)
+            if ((_phrasesList.Count() % _entriesPerPage) != 0)
             {
                 _numPages++;
             }
@@ -901,27 +943,35 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
 
             updateStatusBar();
 
-            if (!_abbreviationsList.Any())
+            if (!_phrasesList.Any())
             {
                 (list[0] as TabStopScannerButton).SetTabStops(0.0f, new float[] { 100, 120 });
-                list[0].SetText("\t-------- PHRASES LIST EMPTY --------");
+                list[0].SetText("\t" + R.GetString("PhrasesListEmpty"));
                 return;
             }
 
-            _abbreviationsList = sort(_abbreviationsList, _sortOrder);
+            _phrasesList = sort(_phrasesList, _sortOrder);
 
             int ii = 0;
 
-            for (int jj = _pageStartIndex; jj < _abbreviationsList.Count && ii < count; ii++, jj++)
+            var image = new Bitmap(1, 1);
+            var graphics = Graphics.FromImage(image);
+
+            for (int jj = _pageStartIndex; jj < _phrasesList.Count && ii < count; ii++, jj++)
             {
                 (list[ii] as TabStopScannerButton).SetTabStops(0.0f, new float[] { 200 });
 
-                list[ii].UserData = _abbreviationsList[jj];
+                list[ii].UserData = _phrasesList[jj];
 
-                var replaceWith = System.Text.RegularExpressions.Regex.Replace(_abbreviationsList[jj].Expansion, "\n", " ");
+                var replaceWith = System.Text.RegularExpressions.Regex.Replace(_phrasesList[jj].Text, "\n", " ");
 
-                list[ii].SetText(replaceWith);
+                var str = getMeasuredString(graphics, (list[ii] as TabStopScannerButton).UIControl.Font, (list[ii] as TabStopScannerButton).Width, replaceWith);
+
+                list[ii].SetText(str);
             }
+
+            image.Dispose();
+            graphics.Dispose();
         }
 
         /// <summary>
@@ -946,7 +996,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         {
             _pageNumber = 0;
             _pageStartIndex = 0;
-            _abbreviationsList = filterAbbreviations(_allAbbreviationsList, Windows.GetText(SearchFilter));
+            _phrasesList = filterPhrases(_allPhrasesList, Windows.GetText(SearchFilter));
             refreshPhrasesList();
         }
 
@@ -962,20 +1012,42 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         }
 
         /// <summary>
+        /// Sets the visibility of the search button
+        /// </summary>
+        /// <param name="visible">true for visible</param>
+        private void setSearchButtonVisibility(bool visible)
+        {
+            if (_searchButtonWidget != null)
+            {
+                if (visible)
+                {
+                    _searchButtonWidget.Show();
+                }
+                else
+                {
+                    _searchButtonWidget.Hide();
+                }
+            }
+        }
+
+        /// <summary>
         /// Sorts the input list based on the sort order
         /// </summary>
         /// <param name="list">input list</param>
         /// <param name="order">sort order</param>
         /// <returns>sorted list</returns>
-        private List<Abbreviation> sort(List<Abbreviation> list, SortOrder order)
+        private List<Phrase> sort(List<Phrase> list, SortOrder order)
         {
             switch (order)
             {
+                case SortOrder.None:
+                    return list;
+
                 case SortOrder.ZtoA:
-                    return list.OrderByDescending(f => f.Mnemonic).ToList();
+                    return list.OrderByDescending(f => f.Text).ToList();
 
                 case SortOrder.AtoZ:
-                    return list.OrderBy(f => f.Mnemonic).ToList();
+                    return list.OrderBy(f => f.Text).ToList();
 
                 default:
                     return list;
@@ -1000,19 +1072,31 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         {
             FormClosing += PhraseSpeakScanner_FormClosing;
             KeyDown += PhraseSpeakScanner_KeyDown;
-            LocationChanged += PhraseSpeakScanner_LocationChanged;
         }
 
         /// <summary>
-        /// Switch the sort order and refresh the abbreviations list
+        /// Switch the sort order and refresh the phrases list
         /// </summary>
         private void switchSortOrder()
         {
-            _sortOrder = _sortOrder == SortOrder.AtoZ ? SortOrder.ZtoA : SortOrder.AtoZ;
+            switch (_sortOrder)
+            {
+                case SortOrder.None:
+                    _sortOrder = SortOrder.AtoZ;
+                    break;
+
+                case SortOrder.AtoZ:
+                    _sortOrder = SortOrder.ZtoA;
+                    break;
+
+                case SortOrder.ZtoA:
+                    _sortOrder = SortOrder.None;
+                    break;
+            }
 
             _pageNumber = 0;
             _pageStartIndex = 0;
-            _abbreviationsList = filterAbbreviations(_allAbbreviationsList, Windows.GetText(SearchFilter));
+            _phrasesList = filterPhrases(_allPhrasesList, Windows.GetText(SearchFilter));
             refreshPhrasesList();
         }
 
@@ -1023,10 +1107,17 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         private void updateButtonBar()
         {
             String text;
-            var sortButtonText = "A-Z";
-            if (!_abbreviationsList.Any())
+            String sortButtonText;
+
+            if (!_phrasesList.Any())
             {
                 text = String.Empty;
+                sortButtonText = String.Empty;
+            }
+            else if (_sortOrder == SortOrder.None)
+            {
+                text = String.Empty;
+                sortButtonText = R.GetString("Sort");
             }
             else if (_sortOrder == SortOrder.AtoZ)
             {
@@ -1051,7 +1142,8 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
 
             if (_pageNumberWidget != null)
             {
-                text = _abbreviationsList.Any() ? "Page " + (_pageNumber + 1) + " of " + _numPages : String.Empty;
+                var str = String.Format(R.GetString("PageNofM"), (_pageNumber + 1), _numPages);
+                text = _phrasesList.Any() ? str : String.Empty;
                 _pageNumberWidget.SetText(text);
             }
         }
@@ -1063,24 +1155,94 @@ namespace ACAT.Extensions.Default.FunctionalAgents.PhraseSpeakAgent
         {
             var text = String.Empty;
 
-            if (!_abbreviationsList.Any())
+            if (!_phrasesList.Any())
             {
-                _statusBarPanelSort.Text = String.Empty;
+                toolStripStatusLabel.Text = String.Empty;
                 return;
             }
 
             switch (_sortOrder)
             {
                 case SortOrder.AtoZ:
-                    text = "Sort Order:  ALPHABETICAL";
+                    text = R.GetString("SortOrderAlphabetical");
                     break;
 
                 case SortOrder.ZtoA:
-                    text = "Sort Order:  REVERSE ALPHABETICAL";
+                    text = R.GetString("SortOrderReverseAlphabetical");
+                    break;
+
+                case SortOrder.None:
+                    text = String.Empty;
                     break;
             }
 
-            _statusBarPanelSort.Text = text;
+            toolStripStatusLabel.Text = text;
+        }
+
+        /// <summary>
+        /// Position of the scanner changed.  If there is a companion
+        /// scanner, dock to it
+        /// </summary>
+        /// <param name="form">the form</param>
+        /// <param name="position">its position</param>
+        private void Windows_EvtWindowPositionChanged(Form form, Windows.WindowPosition position)
+        {
+            if (form != this)
+            {
+                dockToScanner(form);
+            }
+        }
+
+        /// <summary>
+        /// Handler for dispatching commands
+        /// </summary>
+        private class CommandHandler : RunCommandHandler
+        {
+            /// <summary>
+            /// Initializes a new instance of the class.
+            /// </summary>
+            /// <param name="cmd">the command to execute</param>
+            public CommandHandler(String cmd)
+                : base(cmd)
+            {
+            }
+
+            /// <summary>
+            /// Executes the command
+            /// </summary>
+            /// <param name="handled">true if it was handled</param>
+            /// <returns>true on success</returns>
+            public override bool Execute(ref bool handled)
+            {
+                handled = true;
+
+                var form = Dispatcher.Scanner.Form as PhraseSpeakScanner;
+
+                switch (Command)
+                {
+                    case "CmdGoBack":
+                        form.close();
+                        break;
+                }
+
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Command dispatcher
+        /// </summary>
+        private class Dispatcher : DefaultCommandDispatcher
+        {
+            /// <summary>
+            /// Initializes a new instance of the class.
+            /// </summary>
+            /// <param name="panel">the scanner object</param>
+            public Dispatcher(IScannerPanel panel)
+                : base(panel)
+            {
+                Commands.Add(new CommandHandler("CmdGoBack"));
+            }
         }
     }
 }

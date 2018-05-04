@@ -110,15 +110,16 @@
             // 
             // lblDate
             // 
+            this.lblDate.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.lblDate.AutoSize = true;
             this.lblDate.Font = new System.Drawing.Font("Arial Narrow", 20.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblDate.ForeColor = System.Drawing.Color.GhostWhite;
-            this.lblDate.Location = new System.Drawing.Point(1052, 2);
+            this.lblDate.Location = new System.Drawing.Point(577, 208);
             this.lblDate.Name = "lblDate";
             this.lblDate.Size = new System.Drawing.Size(114, 31);
             this.lblDate.TabIndex = 12;
             this.lblDate.Text = "doomsday";
-            this.lblDate.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.lblDate.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // timer
             // 
@@ -207,22 +208,23 @@
             // 
             // lblTime
             // 
+            this.lblTime.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.lblTime.AutoSize = true;
             this.lblTime.Font = new System.Drawing.Font("Arial Narrow", 20.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblTime.ForeColor = System.Drawing.Color.GhostWhite;
-            this.lblTime.Location = new System.Drawing.Point(1052, 46);
+            this.lblTime.Location = new System.Drawing.Point(577, 252);
             this.lblTime.Name = "lblTime";
             this.lblTime.Size = new System.Drawing.Size(107, 31);
             this.lblTime.TabIndex = 23;
             this.lblTime.Text = "12:12 PM";
-            this.lblTime.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.lblTime.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // ScreenLockForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.Orange;
-            this.ClientSize = new System.Drawing.Size(1342, 99);
+            this.ClientSize = new System.Drawing.Size(1342, 323);
             this.Controls.Add(this.lblTime);
             this.Controls.Add(this.B9);
             this.Controls.Add(this.B8);

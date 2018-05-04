@@ -1,11 +1,9 @@
-rem @echo off
-
+@echo off
 
 set CONFIG=%2
 set INSTALLDIR=.\Applications\ACATApp\bin\%CONFIG%
 
 cd %1
-
 
 rem ------------------------------------------------
 @echo Deploying Assets
@@ -35,18 +33,36 @@ copy .\%SOURCEDIR%\Config\*.xml %TARGETDIR%
 set SOURCEDIR=Extensions\Default\UI\Scanners
 set TARGETDIR=%INSTALLDIR%\%SOURCEDIR%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
-copy .\%SOURCEDIR%\bin\%CONFIG%\*.dll %TARGETDIR%
-copy .\%SOURCEDIR%\Config\*.xml %TARGETDIR%
+if exist .\%SOURCEDIR%\bin\%CONFIG%\*.dll copy .\%SOURCEDIR%\bin\%CONFIG%\*.dll %TARGETDIR%
+if exist .\%SOURCEDIR%\Config\*.xml copy .\%SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 rem ------------------------------------------------
-@echo Deploying Actuator dlls
+@echo Deploying English Language UI DLL's
 rem ------------------------------------------------
 
-set SOURCEDIR=Extensions\Default\Actuators\CameraActuator
-set TARGETDIR=%INSTALLDIR%\%SOURCEDIR%
+set LANGUAGE=en
+set BASEDIR=Extensions\Default\UI
+set SOURCEDIR=%BASEDIR%\%LANGUAGE%\Scanners
+set TARGETDIR=%INSTALLDIR%\%LANGUAGE%\%BASEDIR%\Scanners
 if not exist %TARGETDIR% mkdir %TARGETDIR%
-copy .\%SOURCEDIR%\bin\%CONFIG%\CameraActuator.dll %TARGETDIR%
+if exist .\%SOURCEDIR%\bin\%CONFIG%\*.dll copy .\%SOURCEDIR%\bin\%CONFIG%\*.dll %TARGETDIR%
+if exist .\%SOURCEDIR%\Config\*.xml copy .\%SOURCEDIR%\Config\*.xml %TARGETDIR%
 
+set SOURCEDIR=Extensions\Default\Actuators\Vision\VisionActuator
+set TARGETDIR=%INSTALLDIR%\Extensions\Default\Actuators\VisionActuator
+if not exist %TARGETDIR% mkdir %TARGETDIR%
+copy .\%SOURCEDIR%\bin\%CONFIG%\VisionActuator.dll %TARGETDIR%
+copy .\%SOURCEDIR%\bin\%CONFIG%\VisionUtils.dll %TARGETDIR%
+copy .\%SOURCEDIR%\bin\%CONFIG%\*.exe %TARGETDIR%
+if exist .\%SOURCEDIR%\External goto CopyVisionExternal
+echo *** ERROR *** Could not find External dependencies for the Vision Actuator (.\%SOURCEDIR%\External).
+goto Next
+
+:CopyVisionExternal
+if not exist %TARGETDIR%\acat_gestures_dll.dll copy .\%SOURCEDIR%\External\*.* %TARGETDIR%
+if not exist %INSTALLDIR%\shape_predictor_68_face_landmarks.dat copy .\%SOURCEDIR%\External\shape_predictor_68_face_landmarks.dat %INSTALLDIR%
+
+:Next
 rem ------------------------------------------------
 @echo Deploying TTSEngine dlls
 rem ------------------------------------------------
@@ -75,6 +91,7 @@ set SOURCEDIR=%EXTENSIONSBASE%\AppAgents\%AGENT%
 set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\AppAgents\%AGENT%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
 copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
 if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 set AGENT=ACATAgent
@@ -83,6 +100,16 @@ set SOURCEDIR=%EXTENSIONSBASE%\AppAgents\%AGENT%
 set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\AppAgents\%AGENT%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
 copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
+if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
+
+set AGENT=TalkApplicationScannerAgent
+set EXTENSIONSBASE=Extensions\Default
+set SOURCEDIR=%EXTENSIONSBASE%\AppAgents\%AGENT%
+set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\AppAgents\%AGENT%
+if not exist %TARGETDIR% mkdir %TARGETDIR%
+copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
 if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 set AGENT=DialogControlAgent
@@ -91,6 +118,7 @@ set SOURCEDIR=%EXTENSIONSBASE%\AppAgents\%AGENT%
 set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\AppAgents\%AGENT%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
 copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
 if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 set AGENT=FoxitReaderAgent
@@ -99,6 +127,7 @@ set SOURCEDIR=%EXTENSIONSBASE%\AppAgents\%AGENT%
 set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\AppAgents\%AGENT%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
 copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
 if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 set AGENT=MenuControlAgent
@@ -107,6 +136,7 @@ set SOURCEDIR=%EXTENSIONSBASE%\AppAgents\%AGENT%
 set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\AppAgents\%AGENT%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
 copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
 if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 set AGENT=DLLHostAgent
@@ -115,6 +145,16 @@ set SOURCEDIR=%EXTENSIONSBASE%\AppAgents\%AGENT%
 set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\AppAgents\%AGENT%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
 copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
+if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
+
+set AGENT=ApplicationFrameHostAgent
+set EXTENSIONSBASE=Extensions\Default
+set SOURCEDIR=%EXTENSIONSBASE%\AppAgents\%AGENT%
+set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\AppAgents\%AGENT%
+if not exist %TARGETDIR% mkdir %TARGETDIR%
+copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
 if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 set AGENT=FireFoxAgent
@@ -123,6 +163,7 @@ set SOURCEDIR=%EXTENSIONSBASE%\AppAgents\%AGENT%
 set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\AppAgents\%AGENT%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
 copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
 if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 set AGENT=ChromeBrowserAgent
@@ -131,6 +172,7 @@ set SOURCEDIR=%EXTENSIONSBASE%\AppAgents\%AGENT%
 set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\AppAgents\%AGENT%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
 copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
 if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 set AGENT=UnsupportedAppAgent
@@ -139,6 +181,7 @@ set SOURCEDIR=%EXTENSIONSBASE%\AppAgents\%AGENT%
 set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\AppAgents\%AGENT%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
 copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
 if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 set AGENT=InternetExplorerAgent
@@ -147,6 +190,7 @@ set SOURCEDIR=%EXTENSIONSBASE%\AppAgents\%AGENT%
 set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\AppAgents\%AGENT%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
 copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
 if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 set AGENT=MSWordAgent
@@ -155,6 +199,7 @@ set SOURCEDIR=%EXTENSIONSBASE%\AppAgents\%AGENT%
 set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\AppAgents\%AGENT%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
 copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
 if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 set AGENT=NotepadAgent
@@ -163,6 +208,7 @@ set SOURCEDIR=%EXTENSIONSBASE%\AppAgents\%AGENT%
 set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\AppAgents\%AGENT%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
 copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
 if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 set AGENT=WordpadAgent
@@ -171,6 +217,7 @@ set SOURCEDIR=%EXTENSIONSBASE%\AppAgents\%AGENT%
 set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\AppAgents\%AGENT%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
 copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
 if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 set AGENT=OutlookAgent
@@ -179,6 +226,7 @@ set SOURCEDIR=%EXTENSIONSBASE%\AppAgents\%AGENT%
 set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\AppAgents\%AGENT%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
 copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
 if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 set AGENT=TalkWindowAgent
@@ -187,6 +235,7 @@ set SOURCEDIR=%EXTENSIONSBASE%\AppAgents\%AGENT%
 set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\AppAgents\%AGENT%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
 copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
 if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 set AGENT=MediaPlayerAgent
@@ -195,6 +244,7 @@ set SOURCEDIR=%EXTENSIONSBASE%\AppAgents\%AGENT%
 set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\AppAgents\%AGENT%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
 copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
 if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 set AGENT=WindowsExplorerAgent
@@ -204,6 +254,16 @@ set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\AppAgents\%AGENT%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
 echo copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
 copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
+if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
+
+set AGENT=CalculatorAgent
+set EXTENSIONSBASE=Extensions\Default
+set SOURCEDIR=%EXTENSIONSBASE%\AppAgents\%AGENT%
+set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\AppAgents\%AGENT%
+if not exist %TARGETDIR% mkdir %TARGETDIR%
+copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
 if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 
@@ -217,6 +277,7 @@ set SOURCEDIR=%EXTENSIONSBASE%\FunctionalAgents\%AGENT%
 set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\FunctionalAgents\%AGENT%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
 copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
 if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 set AGENT=NewFileAgent
@@ -225,6 +286,7 @@ set SOURCEDIR=%EXTENSIONSBASE%\FunctionalAgents\%AGENT%
 set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\FunctionalAgents\%AGENT%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
 copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
 if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 set AGENT=AbbreviationsAgent
@@ -233,6 +295,7 @@ set SOURCEDIR=%EXTENSIONSBASE%\FunctionalAgents\%AGENT%
 set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\FunctionalAgents\%AGENT%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
 copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
 if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 set AGENT=PhraseSpeakAgent
@@ -241,6 +304,7 @@ set SOURCEDIR=%EXTENSIONSBASE%\FunctionalAgents\%AGENT%
 set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\FunctionalAgents\%AGENT%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
 copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
 if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 set AGENT=VolumeSettingsAgent
@@ -249,6 +313,7 @@ set SOURCEDIR=%EXTENSIONSBASE%\FunctionalAgents\%AGENT%
 set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\FunctionalAgents\%AGENT%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
 copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
 if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 set AGENT=SwitchWindowsAgent
@@ -257,6 +322,7 @@ set SOURCEDIR=%EXTENSIONSBASE%\FunctionalAgents\%AGENT%
 set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\FunctionalAgents\%AGENT%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
 copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
 if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 set AGENT=LaunchAppAgent
@@ -265,6 +331,7 @@ set SOURCEDIR=%EXTENSIONSBASE%\FunctionalAgents\%AGENT%
 set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\FunctionalAgents\%AGENT%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
 copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
 if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 set AGENT=LectureManagerAgent
@@ -274,15 +341,37 @@ set TARGETDIR=%INSTALLDIR%\%EXTENSIONSBASE%\FunctionalAgents\%AGENT%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
 @echo Copying .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll to %TARGETDIR%
 copy .\%SOURCEDIR%\bin\%CONFIG%\%AGENT%.dll %TARGETDIR%\%AGENT%.dll
+if exist %SOURCEDIR%\*.xml copy %SOURCEDIR%\*.xml %TARGETDIR%
 if exist %SOURCEDIR%\Config\*.xml copy %SOURCEDIR%\Config\*.xml %TARGETDIR%
 
 rem ------------------------------------------------
 @echo Deploying ACAT WordPredictor dlls
 rem ------------------------------------------------
 
+set LANGUAGE=en
+set EXTENSIONBASE=Extensions\Default\WordPredictors
+set SOURCEDIR=%EXTENSIONBASE%\%LANGUAGE%\Presage
+set TARGETDIR=%INSTALLDIR%\%LANGUAGE%\%EXTENSIONBASE%\Presage
+if not exist %TARGETDIR% mkdir %TARGETDIR%
+copy .\%SOURCEDIR%\bin\%CONFIG%\*.dll %TARGETDIR%
+
 set SOURCEDIR=Extensions\Default\WordPredictors\Presage
 set TARGETDIR=%INSTALLDIR%\%SOURCEDIR%
 if not exist %TARGETDIR% mkdir %TARGETDIR%
-copy .\%SOURCEDIR%\bin\%CONFIG%\PresageWordPredictor.dll %TARGETDIR%
+copy .\%SOURCEDIR%\bin\%CONFIG%\*.dll %TARGETDIR%
 
-:end
+rem ------------------------------------------------
+@echo Deploying Localization Resources
+rem ------------------------------------------------
+
+set LANGUAGE=en
+set SOURCEDIR=ACATResources\bin\%CONFIG%\%LANGUAGE%
+set TARGETDIR=%INSTALLDIR%\%LANGUAGE%
+if not exist %TARGETDIR% mkdir %TARGETDIR%
+copy .\%SOURCEDIR%\*.* %TARGETDIR%
+set PRESAGEDIR=WordPredictors\Presage
+if not exist %TARGETDIR%\%PRESAGEDIR% mkdir %TARGETDIR%\%PRESAGEDIR%
+if not exist %TARGETDIR%\%PRESAGEDIR%\database.db copy .\%SOURCEDIR%\%PRESAGEDIR%\database.db %TARGETDIR%\%PRESAGEDIR%
+if not exist %TARGETDIR%\%PRESAGEDIR%\15k_words_truecase.txt copy .\%SOURCEDIR%\%PRESAGEDIR%\15k_words_truecase.txt %TARGETDIR%\%PRESAGEDIR%
+if not exist %TARGETDIR%\%PRESAGEDIR%\all_text_tokenized_truecase.lm copy .\%SOURCEDIR%\%PRESAGEDIR%\all_text_tokenized_truecase.lm %TARGETDIR%\%PRESAGEDIR%
+

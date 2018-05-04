@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="LectureManagerAgent.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,49 +18,14 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.AgentManagement;
 using ACAT.Lib.Core.PanelManagement;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Core.WidgetManagement;
 using ACAT.Lib.Extension;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Windows.Forms;
 
 namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
 {
@@ -70,9 +35,10 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
     /// 'speak' the document (deliver the lecture).  User can pace the
     /// lecture either by senetence or by para.
     /// </summary>
-    [DescriptorAttribute("A921931B-DEAD-4820-8A73-F37E5A96E919", 
-                        "Lecture Manager Agent", 
-                        "Agent for Lecture Manager")]
+    [DescriptorAttribute("A921931B-DEAD-4820-8A73-F37E5A96E919",
+                        "Lecture Manager",
+                        "LectureManagerAgent",
+                        "Deliver lectures/talks using text/Word documents as the source materil")]
     internal class LectureManagerAgent : FunctionalAgentBase
     {
         /// <summary>
@@ -87,19 +53,19 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
         private const String SpeakMenu = "LectureManagerSpeakMenu";
 
         /// <summary>
-        /// Title of the contextual menu
-        /// </summary>
-        private const String Title = "Lecture Mgr";
-
-        /// <summary>
         /// Main window of the lecture manager that has the text of the lecture
         /// </summary>
         private static LectureManagerMainForm _lectureMgrForm;
 
         /// <summary>
+        /// Title of the contextual menu
+        /// </summary>
+        private static String _title;
+
+        /// <summary>
         /// We need a contextual menu
         /// </summary>
-        private readonly String[] _supportedFeatures = { "ContextualMenu" };
+        private readonly String[] _supportedCommands = { "CmdContextMenu" };
 
         /// <summary>
         /// The text control agent
@@ -138,15 +104,19 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
 
         /// <summary>
         /// Invoked when the Functional agent is activated.  This is
-        /// the entry point.  Displays the lecture manager form and 
+        /// the entry point.  Displays the lecture manager form and
         /// sets the file name to read from.
         /// </summary>
         /// <returns>true on success</returns>
         public override bool Activate()
         {
+            IsClosing = false;
+
+            _title = R.GetString("LectureMgr");
+
             _menuShown = false;
             ExitCode = CompletionCode.None;
-            _prevScannerPosition = Context.AppWindowPosition;
+           _prevScannerPosition = Context.AppWindowPosition;
             Context.AppWindowPosition = Windows.WindowPosition.TopRight;
             var form = new LectureManagerMainForm
             {
@@ -158,6 +128,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
             form.FormClosing += form_FormClosing;
 
             _lectureMgrForm = form;
+
+            IsActive = true;
+
             Windows.ShowForm(form);
 
             return true;
@@ -168,9 +141,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
         /// to determine the 'enabled' state.
         /// </summary>
         /// <param name="arg">info about the scanner button</param>
-        public override void CheckWidgetEnabled(CheckEnabledArgs arg)
+        public override void CheckCommandEnabled(CommandEnabledArg arg)
         {
-            if (arg.Widget.SubClass.Equals("Speak", StringComparison.InvariantCultureIgnoreCase))
+            if (arg.Command == "SpeakAll" || arg.Command == "SpeakNext")
             {
                 if (!isMainFormActive() || !_lectureMgrForm.FileLoaded)
                 {
@@ -183,9 +156,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
                     {
                         if (isContextMenuText(arg.Widget))
                         {
-                            if (arg.Widget.GetText() != "Pause")
+                            if (arg.Widget.GetText() != R.GetString("LMPause"))
                             {
-                                arg.Widget.SetText("Pause");
+                                arg.Widget.SetText(R.GetString("LMPause"));
                             }
                         }
                         else if (isContextMenuIcon(arg.Widget))
@@ -198,11 +171,11 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
                             }
                         }
                     }
-                    else if (arg.Widget.GetText() != "Next")
+                    else if (arg.Widget.GetText() != R.GetString("LMNext"))
                     {
                         if (isContextMenuText(arg.Widget))
                         {
-                            arg.Widget.SetText("Next");
+                            arg.Widget.SetText(R.GetString("LMNext"));
                         }
                         else if (isContextMenuIcon(arg.Widget))
                         {
@@ -222,7 +195,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
                 return;
             }
 
-            if (arg.Widget.SubClass.Equals("SpeakMenu", StringComparison.InvariantCultureIgnoreCase))
+            if (arg.Command.Equals("SpeakMenu", StringComparison.InvariantCultureIgnoreCase))
             {
                 if (isMainFormActive())
                 {
@@ -232,7 +205,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
             }
             else
             {
-                checkWidgetEnabled(_supportedFeatures, arg);
+                checkCommandEnabled(_supportedCommands, arg);
             }
         }
 
@@ -258,6 +231,12 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
         /// <param name="handled">was this handled</param>
         public override void OnFocusChanged(WindowActivityMonitorInfo monitorInfo, ref bool handled)
         {
+            if (IsClosing)
+            {
+                Log.Debug("IsClosing is true.  Will not handle the focus change");
+                return;
+            }
+
             Log.Debug("OnFocus: " + monitorInfo.ToString());
 
             base.OnFocusChanged(monitorInfo, ref handled);
@@ -308,15 +287,15 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
             switch (command)
             {
                 case "SpeakMenu":
-                    if (isMainFormActive() && Confirm("Speak now?"))
+                    if (isMainFormActive() && Confirm(R.GetString("SpeakNow")))
                     {
-                        var panel = (_lectureMgrForm.Mode == LectureManagerMainForm.SpeechMode.All) ? 
-                                                SpeakAllMenu : 
-                                                SpeakMenu ;
+                        var panel = (_lectureMgrForm.Mode == LectureManagerMainForm.SpeechMode.All) ?
+                                                SpeakAllMenu :
+                                                SpeakMenu;
 
                         showPanel(this, new PanelRequestEventArgs(
                                                 panel,
-                                                Title,
+                                                _title,
                                                 WindowActivityMonitor.GetForegroundWindowInfo(), true));
                     }
 
@@ -349,7 +328,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
                 case "SpeechModeParagraph":
                     if (isMainFormActive())
                     {
-                        if (Confirm("Set Paragraph Mode?"))
+                        if (Confirm(R.GetString("SetParaMode")))
                         {
                             _lectureMgrForm.Mode = LectureManagerMainForm.SpeechMode.Paragraph;
                             closeCurrentPanel();
@@ -361,7 +340,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
                 case "SpeechModeSentence":
                     if (isMainFormActive())
                     {
-                        if (Confirm("Set Sentence Mode?"))
+                        if (Confirm(R.GetString("SetSentenceMode")))
                         {
                             _lectureMgrForm.Mode = LectureManagerMainForm.SpeechMode.Sentence;
                             closeCurrentPanel();
@@ -373,7 +352,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
                 case "SpeechModeAll":
                     if (isMainFormActive())
                     {
-                        if (Confirm("Set All?"))
+                        if (Confirm(R.GetString("SetAll")))
                         {
                             _lectureMgrForm.Mode = LectureManagerMainForm.SpeechMode.All;
                             closeCurrentPanel();
@@ -406,7 +385,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
                     break;
 
                 case "leaveSpeak":
-                    if (Confirm("Speaking. Leave?"))
+                    if (Confirm(R.GetString("SpeakingLeave")))
                     {
                         closeCurrentPanel();
                         if (isMainFormActive())
@@ -418,8 +397,11 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
                     break;
 
                 case "exitLectureManager":
-                    if (Confirm("Close Lecture Manager?"))
+                    if (Confirm(R.GetString("CloseLM")))
                     {
+                        IsActive = false;
+                        IsClosing = true;
+
                         closeCurrentPanel();
                         if (_lectureMgrForm != null)
                         {
@@ -436,16 +418,9 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
                     break;
 
                 case "ToggleMode":
-                    showPanel(this, new PanelRequestEventArgs("LectureManagerToggleModeMenu", 
-                                                                Title,
-                                                                WindowActivityMonitor.GetForegroundWindowInfo(), 
-                                                                true));
-                    break;
-
-                case "NavigateMenu":
-                    showPanel(this, new PanelRequestEventArgs("LectureManagerNavigationMenu", 
-                                                                Title,
-                                                                WindowActivityMonitor.GetForegroundWindowInfo(), 
+                    showPanel(this, new PanelRequestEventArgs("LectureManagerToggleModeMenu",
+                                                                _title,
+                                                                WindowActivityMonitor.GetForegroundWindowInfo(),
                                                                 true));
                     break;
 
@@ -462,7 +437,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
         /// <returns>true on yes</returns>
         internal static bool Confirm(String prompt)
         {
-            return DialogUtils.ConfirmScannerNarrow(PanelManager.Instance.GetCurrentPanel(), prompt, Title);
+            return DialogUtils.ConfirmScannerNarrow(PanelManager.Instance.GetCurrentPanel(), prompt, _title);
         }
 
         /// <summary>
@@ -496,7 +471,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.LectureManager
         private bool getLectureManagerPanel(PanelRequestEventArgs arg)
         {
             arg.PanelClass = "LectureManagerContextMenuSimple";
-            arg.Title = "Lecture Mgr";
+            arg.Title = R.GetString("LectureMgr");
             return true;
         }
 

@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="FileChoiceMenu.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,52 +18,17 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Core.WidgetManagement;
 using ACAT.Lib.Extension;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Windows.Forms;
 
 namespace ACAT.Extensions.Default.FunctionalAgents.NewFile
 {
     /// <summary>
-    /// Menu that presents the choices for the types of file to
+    /// AppMenu that presents the choices for the types of file to
     /// create.
     /// </summary>
     [DescriptorAttribute("52BDBBA8-A855-42A1-AC3C-03945DAD3686",
@@ -77,7 +42,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.NewFile
         /// <param name="panelClass">Panel class of the scanner</param>
         /// <param name="panelTitle">title of the panel (not used)</param>
         public FileChoiceMenu(String panelClass, String panelTitle)
-            : base(panelClass, "File Type")
+            : base(panelClass, R.GetString("NewFileFileType"))
         {
         }
 
@@ -106,7 +71,7 @@ namespace ACAT.Extensions.Default.FunctionalAgents.NewFile
                     DialogResult = DialogResult.OK;
                     break;
 
-                case "@exitFileTypeMenu":
+                case "@ExitFileTypeMenu":
                     Choice = String.Empty;
                     DialogResult = DialogResult.Cancel;
                     break;

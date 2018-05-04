@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="CalibrationForm.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,16 +18,19 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
+using ACAT.ACATResources;
+using ACAT.Lib.Core.Utility;
 using System;
 using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
+using Timer = System.Windows.Forms.Timer;
 
 namespace ACAT.Lib.Core.ActuatorManagement
 {
     /// <summary>
     /// Form to display the status of calibration. Displays calibration status
-    /// of the actuator
+    /// of the actuator including an optional count-down or count-up timer
     /// </summary>
     public partial class CalibrationForm : Form
     {
@@ -39,12 +42,12 @@ namespace ACAT.Lib.Core.ActuatorManagement
         /// <summary>
         /// How much time has elapsed since calibration started
         /// </summary>
-        private const String TimeElapsedPrompt = "Time Elapsed: ";
+        private readonly String _timeElapsedPrompt = R.GetString("TimeElapsed") + ": ";
 
         /// <summary>
-        /// How much time is remaining until endo f calibration
+        /// How much time is remaining until end of calibration
         /// </summary>
-        private const String TimeRemainingPrompt = "Time Remaining: ";
+        private readonly String _timeRemainingPrompt = R.GetString("TimeRemaining") + ": ";
 
         /// <summary>
         /// To track calibration time
@@ -73,6 +76,13 @@ namespace ACAT.Lib.Core.ActuatorManagement
             Closing += OnClosing;
             BorderPanel.Paint += BorderPanelOnPaint;
         }
+
+        /// <summary>
+        /// Gets or sets the text to be displayed on the button
+        /// in the form
+        /// </summary>
+        ///
+        public String ButtonText { get; set; }
 
         /// <summary>
         /// Gets or sets Title caption for the form
@@ -106,6 +116,7 @@ namespace ACAT.Lib.Core.ActuatorManagement
         public void Dismiss()
         {
             DialogResult = DialogResult.Yes;
+            Windows.CloseForm(this);
         }
 
         /// <summary>
@@ -129,7 +140,7 @@ namespace ACAT.Lib.Core.ActuatorManagement
             Invoke(new MethodInvoker(delegate
             {
                 labelPrompt.Text = prompt;
-                labelCaption.Text = caption;
+                Text = caption;
             }));
         }
 
@@ -157,8 +168,8 @@ namespace ACAT.Lib.Core.ActuatorManagement
         }
 
         /// <summary>
-        /// User pressed the configure button.  Hide the form and display
-        /// the configuation dialog
+        /// User pressed the configure button.  Notify
+        /// actuator about this
         /// </summary>
         /// <param name="sender">event sender</param>
         /// <param name="e">event args</param>
@@ -166,13 +177,9 @@ namespace ACAT.Lib.Core.ActuatorManagement
         {
             stopTimer();
 
-            Hide();
+            Dismiss();
 
-            ActuatorManager.Instance.OnCalibrationCanceled(SourceActuator);
-
-            ActuatorManager.Instance.OnDialogRequest(SourceActuator);
-
-            Close();
+            ActuatorManager.Instance.OnCalibrationAction(SourceActuator);
         }
 
         /// <summary>
@@ -190,20 +197,33 @@ namespace ACAT.Lib.Core.ActuatorManagement
         }
 
         /// <summary>
-        /// Form is loading. Initialize and start the calibration
-        /// timer
+        /// Form is loading. Initialize and start the calibration timer
         /// </summary>
         /// <param name="sender">event sender</param>
         /// <param name="eventArgs">event args</param>
         private void OnLoad(object sender, EventArgs eventArgs)
         {
-            //CenterToScreen();
             TopMost = false;
             TopMost = true;
-            labelCaption.Text = Caption;
+            Text = Caption;
             labelPrompt.Text = Prompt;
 
             buttonConfigure.Visible = EnableConfigure;
+
+            if (!EnableConfigure)
+            {
+                int oldHeight = Height;
+                Height = buttonConfigure.Top + 10;
+                int diff = oldHeight - Height;
+                BorderPanel.Height -= diff;
+            }
+            else
+            {
+                if (!String.IsNullOrEmpty(ButtonText))
+                {
+                    buttonConfigure.Text = ButtonText;
+                }
+            }
 
             bool enableTimer = true;
 
@@ -266,8 +286,8 @@ namespace ACAT.Lib.Core.ActuatorManagement
         /// <param name="eventArgs">event args</param>
         private void TimerOnTick(object sender, EventArgs eventArgs)
         {
-            labelTimePrompt.Text = (_timerIncrement == -1) ? TimeRemainingPrompt : TimeElapsedPrompt;
-            labelTimePrompt.Text += _timerCount + " secs";
+            labelTimePrompt.Text = (_timerIncrement == -1) ? _timeRemainingPrompt : _timeElapsedPrompt;
+            labelTimePrompt.Text += _timerCount + " " + R.GetString("Secs");
 
             _timerCount += _timerIncrement;
 

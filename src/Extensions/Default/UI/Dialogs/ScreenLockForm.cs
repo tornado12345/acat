@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="ScreenLockForm.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,12 +18,6 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Security.Permissions;
-using System.Threading;
-using System.Windows.Forms;
 using ACAT.Lib.Core.ActuatorManagement;
 using ACAT.Lib.Core.AnimationManagement;
 using ACAT.Lib.Core.Audit;
@@ -33,41 +27,11 @@ using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Core.WidgetManagement;
 using ACAT.Lib.Core.Widgets;
 using ACAT.Lib.Extension;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Collections.Generic;
+using System.Security.Permissions;
+using System.Threading;
+using System.Windows.Forms;
 
 namespace ACAT.Extensions.Default.UI.Dialogs
 {
@@ -111,7 +75,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// <summary>
         /// Pin to unlock the display
         /// </summary>
-        private readonly String _pin = Common.AppPreferences.MutePin;
+        private readonly String _pin = Common.AppPreferences.ScreenLockPin;
 
         /// <summary>
         /// Array of buttons to enter the pin
@@ -158,10 +122,6 @@ namespace ACAT.Extensions.Default.UI.Dialogs
             _syncObj = new SyncLock();
 
             ShowInTaskbar = false;
-            if (!initialize())
-            {
-                Log.Debug("Initialization error!");
-            }
 
             TopMost = true;
 
@@ -209,6 +169,11 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         }
 
         /// <summary>
+        /// Gets the PanelCommon object
+        /// </summary>
+        public IPanelCommon PanelCommon { get { return null; } }
+
+        /// <summary>
         /// Gets the synch object
         /// </summary>
         public SyncLock SyncObj
@@ -231,7 +196,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
             {
                 if (_animationManager != null)
                 {
-                    Invoke(new MethodInvoker(delegate()
+                    Invoke(new MethodInvoker(delegate
                     {
                         if (_animationManager.GetPlayerState() == PlayerState.Timeout)
                         {
@@ -242,6 +207,29 @@ namespace ACAT.Extensions.Default.UI.Dialogs
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Intitializes the class
+        /// </summary>
+        /// <param name="startupArg">startup param</param>
+        /// <returns>true on success</returns>
+        public bool Initialize(StartupArg startupArg)
+        {
+            var panelConfigMapEntry = PanelConfigMap.GetPanelConfigMapEntry(startupArg.PanelClass);
+            if (panelConfigMapEntry == null)
+            {
+                return false;
+            }
+
+            var retVal = initWidgetManager(panelConfigMapEntry);
+
+            if (retVal)
+            {
+                retVal = initAnimationManager(panelConfigMapEntry);
+            }
+
+            return retVal;
         }
 
         /// <summary>
@@ -296,10 +284,18 @@ namespace ACAT.Extensions.Default.UI.Dialogs
             int value = e.KeyValue;
 
             e.Handled = true;
-            var ch = (char)value;
-            if (char.IsDigit(ch))
+
+            if (e.KeyCode == Keys.Escape)
             {
-                handlePinInput(ch.ToString());
+                Windows.CloseForm(this);
+            }
+            else
+            {
+                var ch = (char)value;
+                if (char.IsDigit(ch))
+                {
+                    handlePinInput(ch.ToString());
+                }
             }
         }
 
@@ -370,33 +366,15 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// <summary>
         /// Loads all animations
         /// </summary>
-        private bool initAnimationManager()
+        private bool initAnimationManager(PanelConfigMapEntry panelConfigMapEntry)
         {
             _animationManager = new AnimationManager();
-            var configFile = PanelConfigMap.GetConfigFileForScreen(GetType());
 
-            var retVal = _animationManager.Init(configFile);
+            var retVal = _animationManager.Init(panelConfigMapEntry);
 
             if (!retVal)
             {
                 Log.Error("Error initializing animation manager");
-                retVal = false;
-            }
-
-            return retVal;
-        }
-
-        /// <summary>
-        /// Initialize the form
-        /// </summary>
-        /// <returns>true on success</returns>
-        private bool initialize()
-        {
-            var retVal = initWidgetManager();
-
-            if (retVal)
-            {
-                retVal = initAnimationManager();
             }
 
             return retVal;
@@ -405,12 +383,11 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// <summary>
         /// Initialize the widget manager
         /// </summary>
-        private bool initWidgetManager()
+        private bool initWidgetManager(PanelConfigMapEntry panelConfigMapEntry)
         {
             _widgetManager = new WidgetManager(this);
 
-            var configFile = PanelConfigMap.GetConfigFileForScreen(this.GetType());
-            var retVal = _widgetManager.Initialize(configFile);
+            var retVal = _widgetManager.Initialize(panelConfigMapEntry.ConfigFileName);
 
             if (!retVal)
             {
@@ -422,6 +399,15 @@ namespace ACAT.Extensions.Default.UI.Dialogs
             }
 
             return retVal;
+        }
+
+        /// <summary>
+        /// Centers date/time controls in the form
+        /// </summary>
+        private void positionControls()
+        {
+            lblDate.Left = (Width - lblDate.Width) / 2;
+            lblTime.Left = (Width - lblTime.Width) / 2;
         }
 
         /// <summary>
@@ -454,7 +440,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
 
             // Hide all the buttons that are not reqd.  Pin length is
             // configurable.  Any numeric buttons past the pin length should be hidden
-            for (int ii = Common.AppPreferences.MutePinDigitMax + 1; ii < _keypadButtonArray.Length; ii++)
+            for (int ii = Common.AppPreferences.ScreenLockPinMaxDigitValue + 1; ii < _keypadButtonArray.Length; ii++)
             {
                 var buttonWidget = _rootWidget.Finder.FindChild(_keypadButtonArray[ii]);
                 if (buttonWidget != null)
@@ -486,7 +472,20 @@ namespace ACAT.Extensions.Default.UI.Dialogs
 
             AuditLog.Audit(new AuditEventScreenLock("show"));
 
+            positionControls();
+
             _animationManager.Start(_rootWidget);
+        }
+
+        /// <summary>
+        /// Event handler for screen resize. Reposition
+        /// controls in the form
+        /// </summary>
+        /// <param name="sender">event sender</param>
+        /// <param name="e">event args</param>
+        private void ScreenLockForm_Resize(object sender, EventArgs e)
+        {
+            positionControls();
         }
 
         /// <summary>
@@ -495,6 +494,8 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// </summary>
         private void subscribeToEvents()
         {
+            this.Resize += ScreenLockForm_Resize;
+
             var buttonList = new List<Widget>();
             _rootWidget.Finder.FindChild(typeof(LabelWidget), buttonList);
 
@@ -566,7 +567,8 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// <summary>
         /// Triggered when a widget is triggered
         /// </summary>
-        /// <param name="widget">Which one triggered?</param>
+        /// <param name="sender">event sender</param>
+        /// <param name="e">event args</param>
         private void widget_EvtActuated(object sender, WidgetEventArgs e)
         {
             var widget = e.SourceWidget;

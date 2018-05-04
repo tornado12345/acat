@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="TalkWindowContextMenu.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,49 +18,14 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.AgentManagement;
 using ACAT.Lib.Core.PanelManagement;
 using ACAT.Lib.Core.PanelManagement.CommandDispatcher;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Extension;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Windows.Forms;
 
 namespace ACAT.Extensions.Default.AppAgents.TalkWindowAgent
 {
@@ -71,13 +36,13 @@ namespace ACAT.Extensions.Default.AppAgents.TalkWindowAgent
     /// </summary>
     [DescriptorAttribute("DEA66EFD-060B-4033-8760-301C7FAFCCA8",
                             "TalkWindowContextMenu",
-                            "Talk Window Contextual Menu")]
+                            "Talk Window Contextual AppMenu")]
     public partial class TalkWindowContextMenu : MenuPanel
     {
         /// <summary>
         /// Use internet explorer as the browser
         /// </summary>
-        private readonly WebSearch _webSearch = new WebSearch("IExplore.exe");
+        private readonly WebSearch _webSearch = new WebSearch(Common.AppPreferences.PreferredBrowser);
 
         /// <summary>
         /// Initializes a new instance of the class.
@@ -85,7 +50,7 @@ namespace ACAT.Extensions.Default.AppAgents.TalkWindowAgent
         /// <param name="panelClass">Name of the scanner</param>
         /// <param name="panelTitle">Title of the menu</param>
         public TalkWindowContextMenu(String panelClass, String panelTitle)
-            : base(panelClass, "Talk Window")
+            : base(panelClass, R.GetString("TalkWindow"))
         {
             // commands supported by the contextual menu
             commandDispatcher.Commands.Add(new CommandHandler(this, "QuickSearch"));
@@ -147,8 +112,8 @@ namespace ACAT.Extensions.Default.AppAgents.TalkWindowAgent
             {
                 DialogUtils.ShowTimedDialog(
                                 PanelManager.Instance.GetCurrentPanel() as Form,
-                                "Google Search",
-                                "Search text is empty.");
+                                R.GetString("GoogleSearch"),
+                                R.GetString("SearchTextEmpty"));
             }
         }
 
@@ -172,8 +137,8 @@ namespace ACAT.Extensions.Default.AppAgents.TalkWindowAgent
             {
                 DialogUtils.ShowTimedDialog(
                             PanelManager.Instance.GetCurrentPanel() as Form,
-                            "Quick Search",
-                            "Search text is empty.");
+                            R.GetString("QuickSearch"),
+                            R.GetString("SearchTextEmpty"));
             }
         }
 
@@ -211,7 +176,7 @@ namespace ACAT.Extensions.Default.AppAgents.TalkWindowAgent
 
                 if (retVal)
                 {
-                    var prompt = "Send speech control sequence?";
+                    var prompt = R.GetString("SendSpeechControlSequence");
                     if (Context.AppTTSManager.ActiveEngine.GetInvoker().SupportsMethod("GetSpeechControlPrompt"))
                     {
                         ret = Context.AppTTSManager.ActiveEngine.GetInvoker()
@@ -267,8 +232,8 @@ namespace ACAT.Extensions.Default.AppAgents.TalkWindowAgent
             else
             {
                 DialogUtils.ShowTimedDialog(PanelManager.Instance.GetCurrentPanel() as Form,
-                                                "Wiki Search",
-                                                "Search text is empty.");
+                                                R.GetString("WikiSearch"),
+                                                R.GetString("SearchTextEmpty"));
             }
         }
 
@@ -277,7 +242,7 @@ namespace ACAT.Extensions.Default.AppAgents.TalkWindowAgent
         /// </summary>
         private void showZoomMenu()
         {
-            var zoomMenuForm = Context.AppPanelManager.CreatePanel("TalkWindowZoomMenu", "Talk Window");
+            var zoomMenuForm = Context.AppPanelManager.CreatePanel("TalkWindowZoomMenu", R.GetString("TalkWindow"));
             if (zoomMenuForm != null)
             {
                 Context.AppPanelManager.ShowDialog(zoomMenuForm as IPanel);

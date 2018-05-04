@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="AnimationManager.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,50 +18,17 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Media;
 using ACAT.Lib.Core.ActuatorManagement;
+using ACAT.Lib.Core.AgentManagement;
 using ACAT.Lib.Core.Audit;
+using ACAT.Lib.Core.CommandManagement;
 using ACAT.Lib.Core.Interpreter;
+using ACAT.Lib.Core.PanelManagement;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Core.WidgetManagement;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Collections.Generic;
+using System.Media;
 
 namespace ACAT.Lib.Core.AnimationManagement
 {
@@ -102,6 +69,13 @@ namespace ACAT.Lib.Core.AnimationManagement
         private Animation _firstAnimation;
 
         /// <summary>
+        /// Panel class this scanner represents
+        /// </summary>
+        private String _panelClass = String.Empty;
+
+        private PanelConfigMapEntry _panelConfigMapEntry;
+
+        /// <summary>
         /// The animation player that actually plays the animation
         /// </summary>
         private AnimationPlayer _player;
@@ -121,11 +95,6 @@ namespace ACAT.Lib.Core.AnimationManagement
         /// Highlighted widget when a switch accept event is recrived
         /// </summary>
         private AnimationWidget _switchAcceptedHighlightedWidget;
-
-        /// <summary>
-        /// Maps switches to actions.
-        /// </summary>
-        private SwitchConfig _switchConfig;
 
         /// <summary>
         /// Animation that was in progress when a switch-down was received
@@ -175,6 +144,7 @@ namespace ACAT.Lib.Core.AnimationManagement
         /// <summary>
         /// Raised to resolve widget references
         /// in the animation sequence
+        /// </summary>
         public event ResolveWidgetChildren EvtResolveWidgetChildren;
 
         /// <summary>
@@ -214,22 +184,21 @@ namespace ACAT.Lib.Core.AnimationManagement
         /// <summary>
         /// Allcoate resources, parse the config file which contains all the
         /// animations and create a list of animation objects. Subscribe to
-        /// events
+        /// events. The parameter panelConfigMapEntry contains all the info about
+        /// the current scanner
         /// </summary>
-        /// <param name="configPath">Name of the config file for the panel</param>
+        /// <param name="panelConfigMapEntry">Config object for the panel</param>
         /// <returns>true on success</returns>
-        public bool Init(String configPath)
+        public bool Init(PanelConfigMapEntry panelConfigMapEntry)
         {
-            bool retVal = _animationsCollection.Load(configPath);
-            if (retVal)
-            {
-                retVal = _interpreter.LoadScripts(configPath);
-            }
+            _panelConfigMapEntry = panelConfigMapEntry;
 
+            _panelClass = (panelConfigMapEntry != null) ? panelConfigMapEntry.PanelClass : String.Empty;
+
+            bool retVal = _animationsCollection.Load(panelConfigMapEntry.ConfigFileName);
             if (retVal)
             {
-                _switchConfig = new SwitchConfig();
-                _switchConfig.Load(configPath);
+                retVal = _interpreter.LoadScripts(panelConfigMapEntry.ConfigFileName);
             }
 
             if (retVal)
@@ -313,6 +282,17 @@ namespace ACAT.Lib.Core.AnimationManagement
         public bool ResolveBool(String arg)
         {
             return String.Compare(arg, "true", true) == 0;
+        }
+
+        /// <summary>
+        /// Transitions to the starting sequence
+        /// </summary>
+        public void Restart()
+        {
+            if (_firstAnimation != null)
+            {
+                Transition(_firstAnimation);
+            }
         }
 
         /// <summary>
@@ -560,6 +540,13 @@ namespace ACAT.Lib.Core.AnimationManagement
             }
         }
 
+        /// <summary>
+        /// Event handler for event raised when the actuator manager has
+        /// decided that the switch has been engaged long enough to be
+        /// treated as a valid trigger
+        /// </summary>
+        /// <param name="sender">event sender</param>
+        /// <param name="e">event args</param>
         private void actuatorManager_EvtSwitchAccepted(object sender, ActuatorSwitchEventArgs e)
         {
             setSwitchState(true);
@@ -568,7 +555,8 @@ namespace ACAT.Lib.Core.AnimationManagement
         /// <summary>
         /// A switch was activated. Figure out the context and execute the
         /// appropriate action. The input manager triggers this event.  Every
-        /// switch has an action that is configured in the swtichconfigmap file.
+        /// switch has an associated action.  It could be a command or the switch
+        /// can be used to select highlighted item on a trigger.
         /// The action is executed depending on the state of the animation player.
         /// </summary>
         /// <param name="sender">event sender</param>
@@ -597,23 +585,20 @@ namespace ACAT.Lib.Core.AnimationManagement
                 }
 
                 // get the action associated with the switch
-                PCode onTrigger = getOnTrigger(switchObj);
-                if (onTrigger == null)
+                String onTrigger = switchObj.Command;
+                if (String.IsNullOrEmpty(onTrigger))
                 {
                     Log.Debug("OnTrigger is null. returning");
                     return;
                 }
 
-                Log.Debug("onTrigger.HasCode: " + onTrigger.HasCode());
-
                 // execute action if the player is in the right state.
                 if (_player.State != PlayerState.Stopped &&
                     _player.State != PlayerState.Unknown &&
                     _player.State != PlayerState.Paused &&
-                    onTrigger.HasCode())
+                    String.Compare(onTrigger, SwitchSetting.TriggerCommand, true) != 0)
                 {
-                    Log.Debug("Executing OnTrigger for panel..." + _currentPanel.Name);
-                    _interpreter.Execute(onTrigger);
+                    runSwitchMappedCommand(switchObj);
                     return;
                 }
 
@@ -624,7 +609,7 @@ namespace ACAT.Lib.Core.AnimationManagement
                     return;
                 }
 
-                Log.Debug("PLayer state is " + _player.State);
+                Log.Debug("Player state is " + _player.State);
                 if (_player.State != PlayerState.Running)
                 {
                     Log.Debug(_currentPanel.Name + ": Player is not Running. Returning");
@@ -961,27 +946,21 @@ namespace ACAT.Lib.Core.AnimationManagement
 
             var widget = e.SourceWidget;
 
-            var animationWidget = _player.GetAnimationWidgetInCurrentAnimation(widget);
-            PCode onMouseClick = null;
-
             SetSelectedWidget(widget);
 
-            if (animationWidget != null && animationWidget.OnMouseClick != null)
+            if (widget.Enabled)
             {
-                onMouseClick = animationWidget.OnMouseClick;
-            }
-            else if (widget.OnMouseClick != null)
-            {
-                onMouseClick = widget.OnMouseClick;
-            }
-
-            if (onMouseClick != null && onMouseClick.HasCode())
-            {
-                _interpreter.Execute(onMouseClick);
-            }
-            else if (widget.IsMouseClickActuateOn)
-            {
-                widget.Actuate();
+                if (widget.OnMouseClick != null && widget.OnMouseClick.HasCode())
+                {
+                    if (_player.State != PlayerState.Paused)
+                    {
+                        _interpreter.Execute(widget.OnMouseClick);
+                    }
+                }
+                else if (widget.IsMouseClickActuateOn)
+                {
+                    widget.Actuate();
+                }
             }
         }
 
@@ -1000,69 +979,6 @@ namespace ACAT.Lib.Core.AnimationManagement
             }
 
             return animations;
-        }
-
-        /// <summary>
-        /// Returns the action associated with the switch.  These actions
-        /// are configured in the switch map config file. First checks the
-        /// animation config file to see if there is a mapping there.  If not
-        /// goes to the global mapping table
-        /// </summary>
-        /// <param name="switchObj">the switch object</param>
-        /// <returns>associated pCode</returns>
-        private PCode getOnTrigger(IActuatorSwitch switchObj)
-        {
-            const string defaultWidgetClass = "default";
-            Log.Debug();
-
-            if (_switchConfig == null)
-            {
-                return null;
-            }
-
-            // check local switchmap first
-            PCode pCode = _switchConfig.GetOnTrigger(switchObj);
-            if (pCode != null)
-            {
-                Log.Debug("Found local pcode for " + switchObj.Name);
-                return pCode;
-            }
-
-            Log.Debug("Did not find local switchconfig.  Checking global one");
-
-            // if this panel is a member of a 'class' of panels(configured thru
-            // the subclass attribute), check if there is a switch map for the class.
-            // otherwise, just use the default one.
-
-            var widgetClass = (_currentPanel != null) ? _currentPanel.SubClass : String.Empty;
-
-            if (String.IsNullOrEmpty(widgetClass))
-            {
-                widgetClass = defaultWidgetClass;
-            }
-
-            Log.Debug("widgetclass: " + widgetClass);
-
-            SwitchConfig switchConfig = ActuatorManager.Instance.SwitchConfigMap;
-
-            PCode retVal = switchConfig.GetOnTrigger(widgetClass, switchObj);
-
-            if (retVal != null)
-            {
-                return retVal;
-            }
-
-            if (widgetClass != defaultWidgetClass)
-            {
-                Log.Debug("Could not find PCode for " + widgetClass + ", trying default");
-                widgetClass = defaultWidgetClass;
-
-                retVal = switchConfig.GetOnTrigger(widgetClass, switchObj);
-            }
-
-            Log.IsNull("retval ", retVal);
-
-            return retVal;
         }
 
         /// <summary>
@@ -1124,6 +1040,65 @@ namespace ACAT.Lib.Core.AnimationManagement
             _switchAcceptedHighlightedWidget = null;
             _switchDownAnimation = null;
             _switchAcceptedAnimation = null;
+        }
+
+        /// <summary>
+        /// Runds the command mapped to the specified switch. Checks
+        /// the command permissions if it CAN be executed.
+        /// </summary>
+        /// <param name="switchObj">The switch object</param>
+        private void runSwitchMappedCommand(IActuatorSwitch switchObj)
+        {
+            bool runCommand = true;
+            String onTrigger = switchObj.Command;
+
+            var form = _currentPanel.UIControl;
+            if (form is IScannerPanel)
+            {
+                var panelCommon = (form as IScannerPanel).PanelCommon;
+                var arg = new CommandEnabledArg(null, onTrigger);
+                panelCommon.CheckCommandEnabled(new CommandEnabledArg(null, onTrigger));
+
+                if (arg.Handled)
+                {
+                    if (!arg.Enabled)
+                    {
+                        Log.Debug("Command " + onTrigger + " is not currently enabled");
+                        return;
+                    }
+                    else
+                    {
+                        Log.Debug("Command " + onTrigger + " IS ENABLED");
+                    }
+                }
+                else
+                {
+                    Log.Debug("arg.handled is false for " + onTrigger);
+
+                    var cmdDescriptor = CommandManager.Instance.AppCommandTable.Get(onTrigger);
+                    if (cmdDescriptor != null && !cmdDescriptor.EnableSwitchMap)
+                    {
+                        Log.Debug("EnableswitchMap is not enabled for " + onTrigger);
+                        runCommand = false;
+                    }
+                }
+            }
+            else
+            {
+                Log.Debug("Dialog is active. Will not handle");
+                runCommand = false;
+            }
+
+            if (runCommand)
+            {
+                Log.Debug("Executing OnTrigger command " + onTrigger + " for panel..." + _currentPanel.Name);
+                PCode pcode = new PCode { Script = "run(" + onTrigger + ")" };
+                var parser = new Parser();
+                if (parser.Parse(pcode.Script, ref pcode))
+                {
+                    _interpreter.Execute(pcode);
+                }
+            }
         }
 
         private void setSwitchState(bool state)

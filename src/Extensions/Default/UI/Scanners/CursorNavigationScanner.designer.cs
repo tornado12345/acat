@@ -58,12 +58,17 @@
             this.B3 = new ACAT.Lib.Core.WidgetManagement.ScannerButtonControl();
             this.B2 = new ACAT.Lib.Core.WidgetManagement.ScannerButtonControl();
             this.B1 = new ACAT.Lib.Core.WidgetManagement.ScannerButtonControl();
+            this.statusStrip = new System.Windows.Forms.StatusStrip();
+            this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
+            this.toolStripStatusLabel2 = new System.Windows.Forms.ToolStripStatusLabel();
+            this.toolStripStatusLabel3 = new System.Windows.Forms.ToolStripStatusLabel();
             this.tableLayoutPanel1.SuspendLayout();
             this.tableLayoutPanel2.SuspendLayout();
             this.Row4.SuspendLayout();
             this.Row3.SuspendLayout();
             this.Row2.SuspendLayout();
             this.Row1.SuspendLayout();
+            this.statusStrip.SuspendLayout();
             this.SuspendLayout();
             // 
             // tableLayoutPanel1
@@ -77,8 +82,8 @@
             this.tableLayoutPanel1.Name = "tableLayoutPanel1";
             this.tableLayoutPanel1.RowCount = 1;
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 300F));
-            this.tableLayoutPanel1.Size = new System.Drawing.Size(361, 276);
+            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 269F));
+            this.tableLayoutPanel1.Size = new System.Drawing.Size(361, 269);
             this.tableLayoutPanel1.TabIndex = 0;
             // 
             // tableLayoutPanel2
@@ -98,7 +103,7 @@
             this.tableLayoutPanel2.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 16.66667F));
             this.tableLayoutPanel2.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 16.66667F));
             this.tableLayoutPanel2.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 16.66667F));
-            this.tableLayoutPanel2.Size = new System.Drawing.Size(361, 276);
+            this.tableLayoutPanel2.Size = new System.Drawing.Size(361, 269);
             this.tableLayoutPanel2.TabIndex = 4;
             // 
             // Row4
@@ -117,12 +122,12 @@
             this.Row4.Controls.Add(this.B20, 1, 0);
             this.Row4.Controls.Add(this.B19, 0, 0);
             this.Row4.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.Row4.Location = new System.Drawing.Point(0, 207);
+            this.Row4.Location = new System.Drawing.Point(0, 201);
             this.Row4.Margin = new System.Windows.Forms.Padding(0);
             this.Row4.Name = "Row4";
             this.Row4.RowCount = 1;
             this.Row4.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.Row4.Size = new System.Drawing.Size(361, 69);
+            this.Row4.Size = new System.Drawing.Size(361, 68);
             this.Row4.TabIndex = 3;
             // 
             // B24
@@ -134,7 +139,7 @@
             this.B24.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.B24.Location = new System.Drawing.Point(303, 3);
             this.B24.Name = "B24";
-            this.B24.Size = new System.Drawing.Size(55, 63);
+            this.B24.Size = new System.Drawing.Size(55, 62);
             this.B24.TabIndex = 5;
             this.B24.Text = ".";
             this.B24.UseMnemonic = false;
@@ -149,7 +154,7 @@
             this.B23.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.B23.Location = new System.Drawing.Point(243, 3);
             this.B23.Name = "B23";
-            this.B23.Size = new System.Drawing.Size(54, 63);
+            this.B23.Size = new System.Drawing.Size(54, 62);
             this.B23.TabIndex = 4;
             this.B23.Text = ".";
             this.B23.UseMnemonic = false;
@@ -164,7 +169,7 @@
             this.B22.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.B22.Location = new System.Drawing.Point(183, 3);
             this.B22.Name = "B22";
-            this.B22.Size = new System.Drawing.Size(54, 63);
+            this.B22.Size = new System.Drawing.Size(54, 62);
             this.B22.TabIndex = 3;
             this.B22.Text = ".";
             this.B22.UseMnemonic = false;
@@ -179,7 +184,7 @@
             this.B21.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.B21.Location = new System.Drawing.Point(123, 3);
             this.B21.Name = "B21";
-            this.B21.Size = new System.Drawing.Size(54, 63);
+            this.B21.Size = new System.Drawing.Size(54, 62);
             this.B21.TabIndex = 2;
             this.B21.Text = ".";
             this.B21.UseMnemonic = false;
@@ -194,7 +199,7 @@
             this.B20.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.B20.Location = new System.Drawing.Point(63, 3);
             this.B20.Name = "B20";
-            this.B20.Size = new System.Drawing.Size(54, 63);
+            this.B20.Size = new System.Drawing.Size(54, 62);
             this.B20.TabIndex = 1;
             this.B20.Text = ".";
             this.B20.UseMnemonic = false;
@@ -209,7 +214,7 @@
             this.B19.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.B19.Location = new System.Drawing.Point(3, 3);
             this.B19.Name = "B19";
-            this.B19.Size = new System.Drawing.Size(54, 63);
+            this.B19.Size = new System.Drawing.Size(54, 62);
             this.B19.TabIndex = 0;
             this.B19.Text = ".";
             this.B19.UseMnemonic = false;
@@ -231,12 +236,12 @@
             this.Row3.Controls.Add(this.B14, 1, 0);
             this.Row3.Controls.Add(this.B13, 0, 0);
             this.Row3.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.Row3.Location = new System.Drawing.Point(0, 138);
+            this.Row3.Location = new System.Drawing.Point(0, 134);
             this.Row3.Margin = new System.Windows.Forms.Padding(0);
             this.Row3.Name = "Row3";
             this.Row3.RowCount = 1;
             this.Row3.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.Row3.Size = new System.Drawing.Size(361, 69);
+            this.Row3.Size = new System.Drawing.Size(361, 67);
             this.Row3.TabIndex = 2;
             // 
             // B18
@@ -248,7 +253,7 @@
             this.B18.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.B18.Location = new System.Drawing.Point(303, 3);
             this.B18.Name = "B18";
-            this.B18.Size = new System.Drawing.Size(55, 63);
+            this.B18.Size = new System.Drawing.Size(55, 61);
             this.B18.TabIndex = 5;
             this.B18.Text = ".";
             this.B18.UseMnemonic = false;
@@ -263,7 +268,7 @@
             this.B17.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.B17.Location = new System.Drawing.Point(243, 3);
             this.B17.Name = "B17";
-            this.B17.Size = new System.Drawing.Size(54, 63);
+            this.B17.Size = new System.Drawing.Size(54, 61);
             this.B17.TabIndex = 4;
             this.B17.Text = ".";
             this.B17.UseMnemonic = false;
@@ -278,7 +283,7 @@
             this.B16.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.B16.Location = new System.Drawing.Point(183, 3);
             this.B16.Name = "B16";
-            this.B16.Size = new System.Drawing.Size(54, 63);
+            this.B16.Size = new System.Drawing.Size(54, 61);
             this.B16.TabIndex = 3;
             this.B16.Text = ".";
             this.B16.UseMnemonic = false;
@@ -293,7 +298,7 @@
             this.B15.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.B15.Location = new System.Drawing.Point(123, 3);
             this.B15.Name = "B15";
-            this.B15.Size = new System.Drawing.Size(54, 63);
+            this.B15.Size = new System.Drawing.Size(54, 61);
             this.B15.TabIndex = 2;
             this.B15.Text = ".";
             this.B15.UseMnemonic = false;
@@ -308,7 +313,7 @@
             this.B14.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.B14.Location = new System.Drawing.Point(63, 3);
             this.B14.Name = "B14";
-            this.B14.Size = new System.Drawing.Size(54, 63);
+            this.B14.Size = new System.Drawing.Size(54, 61);
             this.B14.TabIndex = 1;
             this.B14.Text = ".";
             this.B14.UseMnemonic = false;
@@ -323,7 +328,7 @@
             this.B13.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.B13.Location = new System.Drawing.Point(3, 3);
             this.B13.Name = "B13";
-            this.B13.Size = new System.Drawing.Size(54, 63);
+            this.B13.Size = new System.Drawing.Size(54, 61);
             this.B13.TabIndex = 0;
             this.B13.Text = ".";
             this.B13.UseMnemonic = false;
@@ -345,12 +350,12 @@
             this.Row2.Controls.Add(this.B8, 1, 0);
             this.Row2.Controls.Add(this.B7, 0, 0);
             this.Row2.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.Row2.Location = new System.Drawing.Point(0, 69);
+            this.Row2.Location = new System.Drawing.Point(0, 67);
             this.Row2.Margin = new System.Windows.Forms.Padding(0);
             this.Row2.Name = "Row2";
             this.Row2.RowCount = 1;
             this.Row2.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.Row2.Size = new System.Drawing.Size(361, 69);
+            this.Row2.Size = new System.Drawing.Size(361, 67);
             this.Row2.TabIndex = 1;
             // 
             // B12
@@ -362,7 +367,7 @@
             this.B12.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.B12.Location = new System.Drawing.Point(303, 3);
             this.B12.Name = "B12";
-            this.B12.Size = new System.Drawing.Size(55, 63);
+            this.B12.Size = new System.Drawing.Size(55, 61);
             this.B12.TabIndex = 5;
             this.B12.Text = ".";
             this.B12.UseMnemonic = false;
@@ -377,7 +382,7 @@
             this.B11.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.B11.Location = new System.Drawing.Point(243, 3);
             this.B11.Name = "B11";
-            this.B11.Size = new System.Drawing.Size(54, 63);
+            this.B11.Size = new System.Drawing.Size(54, 61);
             this.B11.TabIndex = 4;
             this.B11.Text = ".";
             this.B11.UseMnemonic = false;
@@ -392,7 +397,7 @@
             this.B10.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.B10.Location = new System.Drawing.Point(183, 3);
             this.B10.Name = "B10";
-            this.B10.Size = new System.Drawing.Size(54, 63);
+            this.B10.Size = new System.Drawing.Size(54, 61);
             this.B10.TabIndex = 3;
             this.B10.Text = ".";
             this.B10.UseMnemonic = false;
@@ -407,7 +412,7 @@
             this.B9.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.B9.Location = new System.Drawing.Point(123, 3);
             this.B9.Name = "B9";
-            this.B9.Size = new System.Drawing.Size(54, 63);
+            this.B9.Size = new System.Drawing.Size(54, 61);
             this.B9.TabIndex = 2;
             this.B9.Text = ".";
             this.B9.UseMnemonic = false;
@@ -422,7 +427,7 @@
             this.B8.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.B8.Location = new System.Drawing.Point(63, 3);
             this.B8.Name = "B8";
-            this.B8.Size = new System.Drawing.Size(54, 63);
+            this.B8.Size = new System.Drawing.Size(54, 61);
             this.B8.TabIndex = 1;
             this.B8.Text = ".";
             this.B8.UseMnemonic = false;
@@ -437,7 +442,7 @@
             this.B7.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.B7.Location = new System.Drawing.Point(3, 3);
             this.B7.Name = "B7";
-            this.B7.Size = new System.Drawing.Size(54, 63);
+            this.B7.Size = new System.Drawing.Size(54, 61);
             this.B7.TabIndex = 0;
             this.B7.Text = ".";
             this.B7.UseMnemonic = false;
@@ -464,7 +469,7 @@
             this.Row1.Name = "Row1";
             this.Row1.RowCount = 1;
             this.Row1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.Row1.Size = new System.Drawing.Size(361, 69);
+            this.Row1.Size = new System.Drawing.Size(361, 67);
             this.Row1.TabIndex = 0;
             // 
             // B6
@@ -476,7 +481,7 @@
             this.B6.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.B6.Location = new System.Drawing.Point(303, 3);
             this.B6.Name = "B6";
-            this.B6.Size = new System.Drawing.Size(55, 63);
+            this.B6.Size = new System.Drawing.Size(55, 61);
             this.B6.TabIndex = 5;
             this.B6.UseMnemonic = false;
             this.B6.UseVisualStyleBackColor = false;
@@ -490,7 +495,7 @@
             this.B5.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.B5.Location = new System.Drawing.Point(243, 3);
             this.B5.Name = "B5";
-            this.B5.Size = new System.Drawing.Size(54, 63);
+            this.B5.Size = new System.Drawing.Size(54, 61);
             this.B5.TabIndex = 4;
             this.B5.UseMnemonic = false;
             this.B5.UseVisualStyleBackColor = false;
@@ -504,7 +509,7 @@
             this.B4.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.B4.Location = new System.Drawing.Point(183, 3);
             this.B4.Name = "B4";
-            this.B4.Size = new System.Drawing.Size(54, 63);
+            this.B4.Size = new System.Drawing.Size(54, 61);
             this.B4.TabIndex = 3;
             this.B4.UseMnemonic = false;
             this.B4.UseVisualStyleBackColor = false;
@@ -518,7 +523,7 @@
             this.B3.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.B3.Location = new System.Drawing.Point(123, 3);
             this.B3.Name = "B3";
-            this.B3.Size = new System.Drawing.Size(54, 63);
+            this.B3.Size = new System.Drawing.Size(54, 61);
             this.B3.TabIndex = 2;
             this.B3.UseMnemonic = false;
             this.B3.UseVisualStyleBackColor = false;
@@ -532,7 +537,7 @@
             this.B2.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.B2.Location = new System.Drawing.Point(63, 3);
             this.B2.Name = "B2";
-            this.B2.Size = new System.Drawing.Size(54, 63);
+            this.B2.Size = new System.Drawing.Size(54, 61);
             this.B2.TabIndex = 1;
             this.B2.UseMnemonic = false;
             this.B2.UseVisualStyleBackColor = false;
@@ -546,19 +551,64 @@
             this.B1.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.B1.Location = new System.Drawing.Point(3, 3);
             this.B1.Name = "B1";
-            this.B1.Size = new System.Drawing.Size(54, 63);
+            this.B1.Size = new System.Drawing.Size(54, 61);
             this.B1.TabIndex = 0;
             this.B1.UseMnemonic = false;
             this.B1.UseVisualStyleBackColor = false;
+            // 
+            // statusStrip
+            // 
+            this.statusStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
+            this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.toolStripStatusLabel1,
+            this.toolStripStatusLabel2,
+            this.toolStripStatusLabel3});
+            this.statusStrip.Location = new System.Drawing.Point(0, 269);
+            this.statusStrip.Name = "statusStrip";
+            this.statusStrip.Padding = new System.Windows.Forms.Padding(1, 0, 10, 0);
+            this.statusStrip.Size = new System.Drawing.Size(361, 27);
+            this.statusStrip.TabIndex = 1;
+            this.statusStrip.Text = "statusStrip1";
+            // 
+            // toolStripStatusLabel1
+            // 
+            this.toolStripStatusLabel1.BackColor = System.Drawing.Color.Transparent;
+            this.toolStripStatusLabel1.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.toolStripStatusLabel1.Font = new System.Drawing.Font("Arial", 13.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.toolStripStatusLabel1.ForeColor = System.Drawing.Color.Black;
+            this.toolStripStatusLabel1.Name = "toolStripStatusLabel1";
+            this.toolStripStatusLabel1.Size = new System.Drawing.Size(191, 22);
+            this.toolStripStatusLabel1.Text = "toolStripStatusLabel1";
+            // 
+            // toolStripStatusLabel2
+            // 
+            this.toolStripStatusLabel2.BackColor = System.Drawing.Color.Transparent;
+            this.toolStripStatusLabel2.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.toolStripStatusLabel2.Font = new System.Drawing.Font("Arial", 13.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.toolStripStatusLabel2.ForeColor = System.Drawing.Color.Black;
+            this.toolStripStatusLabel2.Name = "toolStripStatusLabel2";
+            this.toolStripStatusLabel2.Size = new System.Drawing.Size(191, 22);
+            this.toolStripStatusLabel2.Text = "toolStripStatusLabel2";
+            // 
+            // toolStripStatusLabel3
+            // 
+            this.toolStripStatusLabel3.BackColor = System.Drawing.Color.Transparent;
+            this.toolStripStatusLabel3.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.toolStripStatusLabel3.Font = new System.Drawing.Font("Arial", 13.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.toolStripStatusLabel3.ForeColor = System.Drawing.Color.Black;
+            this.toolStripStatusLabel3.Name = "toolStripStatusLabel3";
+            this.toolStripStatusLabel3.Size = new System.Drawing.Size(191, 22);
+            this.toolStripStatusLabel3.Text = "toolStripStatusLabel3";
             // 
             // CursorNavigationScanner
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.Control;
-            this.ClientSize = new System.Drawing.Size(361, 276);
+            this.ClientSize = new System.Drawing.Size(361, 296);
             this.ControlBox = false;
             this.Controls.Add(this.tableLayoutPanel1);
+            this.Controls.Add(this.statusStrip);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
@@ -570,7 +620,10 @@
             this.Row3.ResumeLayout(false);
             this.Row2.ResumeLayout(false);
             this.Row1.ResumeLayout(false);
+            this.statusStrip.ResumeLayout(false);
+            this.statusStrip.PerformLayout();
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 
@@ -606,5 +659,9 @@
         private Lib.Core.WidgetManagement.ScannerButtonControl B9;
         private Lib.Core.WidgetManagement.ScannerButtonControl B8;
         private Lib.Core.WidgetManagement.ScannerButtonControl B7;
+        private System.Windows.Forms.StatusStrip statusStrip;
+        private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel1;
+        private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel2;
+        private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel3;
     }
 }

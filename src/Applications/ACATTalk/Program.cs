@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="Program.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,74 +18,38 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.IO;
-using System.Reflection;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.AgentManagement;
 using ACAT.Lib.Core.Audit;
+using ACAT.Lib.Core.CommandManagement;
 using ACAT.Lib.Core.PanelManagement;
-using ACAT.Lib.Core.UserManagement;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Extension;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using ACATExtension.CommandHandlers;
+using System;
+using System.Diagnostics;
+using System.Windows.Forms;
 
 namespace ACAT.Applications.ACATTalk
 {
     /// <summary>
-    /// Initializes the various modules in ACAT and activates the default scanner.
+    /// ACAT Talk is an application customized for conversations.
     /// </summary>
     internal static class Program
     {
+        /// <summary>
+        /// Preferred panel config to use
+        /// </summary>
+        private static String _panelConfig;
+
         /// <summary>
         /// Used for parsing the command line
         /// </summary>
         private enum ParseState
         {
             Next,
-            Form,
+            PanelConfig
         }
-
-        /// <summary>
-        /// Name of the form to launch
-        /// </summary>
-        private static String _formName = String.Empty;
 
         /// <summary>
         /// The main entry point for the application.
@@ -93,55 +57,50 @@ namespace ACAT.Applications.ACATTalk
         [STAThread]
         public static void Main(String[] args)
         {
-            // Disallow multiple instances
-            if (FileUtils.IsACATRunning())
+            if (AppCommon.OtherInstancesRunning())
             {
                 return;
             }
-
-            Windows.TurnOffDPIAwareness();
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
-            var assembly = Assembly.GetExecutingAssembly();
-
-            // get appname and copyright information
-            object[] attributes = assembly.GetCustomAttributes(typeof (AssemblyTitleAttribute), false);
-            var appName = (attributes.Length != 0)
-                                ? ((AssemblyTitleAttribute) attributes[0]).Title
-                                : String.Empty;
-
-            var appVersion = "Version " + assembly.GetName().Version;
-            attributes = assembly.GetCustomAttributes(typeof (AssemblyCopyrightAttribute), false);
-            var appCopyright = (attributes.Length != 0)
-                                    ? ((AssemblyCopyrightAttribute) attributes[0]).Copyright
-                                    : String.Empty;
-
-            Log.Info("***** " + appName + ". " + appVersion + ". " + appCopyright + " *****");
+            FileUtils.LogAssemblyInfo();
 
             parseCommandLine(args);
 
-            CoreGlobals.AppGlobalPreferences = GlobalPreferences.Load(FileUtils.GetPreferencesFileFullPath(GlobalPreferences.FileName));
+            AppCommon.LoadGlobalSettings();
 
-            //Set the active user/profile information
-            setUserName();
-            setProfileName();
+            AppCommon.SetUserName();
+            AppCommon.SetProfileName();
 
-            //Create user and profile if they don't already exist
-            if (!createUserAndProfile())
+            if (!AppCommon.CreateUserAndProfile())
             {
                 return;
             }
 
-            if (!loadUserPreferences())
+            if (!AppCommon.LoadUserPreferences())
+            {
+                return;
+            }
+
+            Common.AppPreferences.AppId = "ACATTalk";
+            Common.AppPreferences.AppName = "ACAT Talk";
+
+            if (!AppCommon.SetCulture())
             {
                 return;
             }
 
             Log.SetupListeners();
 
-            Splash splash = new Splash(FileUtils.GetImagePath("SplashScreenImage.png"), appName, appVersion, appCopyright, 1000);
+            CommandDescriptors.Init();
+
+            setSwitchMapCommands();
+
+            Common.AppPreferences.PreferredPanelConfigNames = !String.IsNullOrEmpty(_panelConfig) ? _panelConfig : "TalkApplicationABC";
+
+            Splash splash = new Splash(1000);
             splash.Show();
 
             Context.PreInit();
@@ -149,11 +108,11 @@ namespace ACAT.Applications.ACATTalk
 
             Context.AppAgentMgr.EnableAppAgentContextSwitch = false;
 
-            if (!Context.Init(Context.StartupFlags.Minimal | 
-                                Context.StartupFlags.TextToSpeech | 
-                                Context.StartupFlags.WordPrediction | 
+            if (!Context.Init(Context.StartupFlags.Minimal |
+                                Context.StartupFlags.TextToSpeech |
+                                Context.StartupFlags.WordPrediction |
                                 Context.StartupFlags.AgentManager |
-                                Context.StartupFlags.WindowsActivityMonitor | 
+                                Context.StartupFlags.WindowsActivityMonitor |
                                 Context.StartupFlags.Abbreviations))
             {
                 splash.Close();
@@ -180,7 +139,7 @@ namespace ACAT.Applications.ACATTalk
 
             if (!Context.PostInit())
             {
-                MessageBox.Show(Context.GetInitCompletionStatus(), "Initialization Error");
+                MessageBox.Show(Context.GetInitCompletionStatus(), R.GetString("InitializationError"));
                 return;
             }
 
@@ -188,25 +147,30 @@ namespace ACAT.Applications.ACATTalk
 
             Context.AppWindowPosition = Windows.WindowPosition.CenterScreen;
 
-            var formName = String.IsNullOrEmpty(_formName) ? "TalkApplicationScanner" : _formName;
-            var form = PanelManager.Instance.CreatePanel(formName);
-            if (form != null)
-            {
-                // Add ad-hoc agent that will handle the form
-                IApplicationAgent agent = new TalkAppAgent();
-                Context.AppAgentMgr.AddAgent(form.Handle, agent);
-
-                Context.AppPanelManager.Show(form as IPanel);
-            }
-            else
-            {
-                MessageBox.Show("Invalid form name " + form, "Error");
-                return;
-            }
-
             try
             {
-                Application.Run();
+                var form = PanelManager.Instance.CreatePanel("TalkApplicationScanner");
+                if (form != null)
+                {
+                    // Add ad-hoc agent that will handle the form
+                    IApplicationAgent agent = Context.AppAgentMgr.GetAgentByName("Talk Application Agent");
+                    if (agent == null)
+                    {
+                        MessageBox.Show("Could not find application agent for this application.");
+                        return;
+                    }
+
+                    Context.AppAgentMgr.AddAgent(form.Handle, agent);
+
+                    Context.AppPanelManager.ShowDialog(form as IPanel);
+                }
+                else
+                {
+                    MessageBox.Show(String.Format(R.GetString("InvalidFormName"), "TalkApplicationScanner"), R.GetString("Error"));
+                    return;
+                }
+
+                AppCommon.ExitMessageShow();
 
                 AuditLog.Audit(new AuditEvent("Application", "stop"));
 
@@ -214,7 +178,7 @@ namespace ACAT.Applications.ACATTalk
 
                 Common.Uninit();
 
-                //Utils.Dispose();
+                AppCommon.ExitMessageClose();
 
                 Log.Close();
             }
@@ -222,131 +186,8 @@ namespace ACAT.Applications.ACATTalk
             {
                 MessageBox.Show(ex.ToString());
             }
-        }
 
-        /// <summary>
-        /// Creates the specified user using the batchFileName.
-        /// Executes the batchfile which creates the user
-        /// folder and copies the initialization files
-        /// </summary>
-        /// <param name="batchFileName">Name of the batchfile to run</param>
-        /// <param name="userName">Name of the user</param>
-        /// <returns>true on success</returns>
-        private static bool createUser(String batchFileName, String userName)
-        {
-            bool retVal = true;
-            try
-            {
-                var dir = AppDomain.CurrentDomain.BaseDirectory;
-                Process proc = new Process
-                {
-                    StartInfo =
-                    {
-                        FileName = Path.Combine(dir, batchFileName),
-                        WorkingDirectory = dir,
-                        Arguments = userName,
-                        UseShellExecute = true
-                    }
-                };
-
-                proc.Start();
-                proc.WaitForExit();
-                proc.Close();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Unable to create user. Error executing batchfile " + batchFileName + ".\nError: " + ex.ToString());
-                retVal = false;
-            }
-            return retVal;
-        }
-
-        /// <summary>
-        /// Creates the user and profile directories if they
-        /// don't exist
-        /// </summary>
-        /// <returns></returns>
-        private static bool createUserAndProfile()
-        {
-            if (!UserManager.CurrentUserExists())
-            {
-                const string batchFile = "CreateUser.bat";
-
-                if (!createUser(batchFile, UserManager.CurrentUser))
-                {
-                    return false;
-                }
-            }
-
-            if (!ProfileManager.ProfileExists(ProfileManager.CurrentProfile))
-            {
-                ProfileManager.CreateProfile(ProfileManager.CurrentProfile);
-            }
-
-            if (!ProfileManager.ProfileExists(ProfileManager.CurrentProfile))
-            {
-                MessageBox.Show("Could not find profile " + ProfileManager.CurrentProfile);
-                return false;
-            }
-
-            return true;
-        }
-
-        /// <summary>
-        /// Loads user settings from the user's profile directory
-        /// </summary>
-        /// <returns>true on success</returns>
-        private static bool loadUserPreferences()
-        {
-            ACATPreferences.PreferencesFilePath = ProfileManager.GetFullPath("Settings.xml");
-            ACATPreferences.DefaultPreferencesFilePath = ProfileManager.GetFullPath("DefaultSettings.xml");
-
-            FileUtils.AppPreferencesDir = ProfileManager.CurrentProfileDir;
-
-            Common.AppPreferences = ACATPreferences.Load();
-            if (Common.AppPreferences == null)
-            {
-                MessageBox.Show("Unable to read preferences from " + FileUtils.AppPreferencesDir);
-                return false;
-            }
-
-            Common.AppPreferences.Save();
-
-            CoreGlobals.AppPreferences = Common.AppPreferences;
-
-            ACATPreferences.SaveDefaults<ACATPreferences>(ACATPreferences.DefaultPreferencesFilePath);
-
-            Common.AppPreferences.DebugAssertOnError = false;
-
-            ACATPreferences.ApplicationAssembly = Assembly.GetExecutingAssembly();
-
-            return true;
-        }
-
- 
-        /// <summary>
-        /// Sets the active profile name
-        /// </summary>
-        private static void setProfileName()
-        {
-            ProfileManager.CurrentProfile = CoreGlobals.AppGlobalPreferences.CurrentProfile.Trim();
-            if (String.IsNullOrEmpty(ProfileManager.CurrentProfile))
-            {
-                ProfileManager.CurrentProfile = ProfileManager.DefaultProfileName;
-            }
-        }
-
-        /// <summary>
-        /// Sets the active user name
-        /// </summary>
-        private static void setUserName()
-        {
-            //UserManager.CurrentUser = CoreGlobals.AppGlobalPreferences.CurrentUser.Trim();
-            UserManager.CurrentUser = "ACAT";  // hardcode for
-            if (String.IsNullOrEmpty(UserManager.CurrentUser))
-            {
-                UserManager.CurrentUser = UserManager.DefaultUserName;
-            }
+            AppCommon.OnExit();
         }
 
         /// <summary>
@@ -362,42 +203,52 @@ namespace ACAT.Applications.ACATTalk
             {
                 switch (args[index].ToLower().Trim())
                 {
-                    case "-form":
-                    case "/form":
-                    case "-f":
-                    case "/f":
-                        parseState = ParseState.Form;
+                    case "-panelconfig":
+                    case "/panelconfig":
+                        parseState = ParseState.PanelConfig;
                         break;
                 }
 
                 switch (parseState)
                 {
-                    case ParseState.Form:
-                        args[index] = args[index].Trim();
-                        if (!isOption(args[index]))
+                    case ParseState.PanelConfig:
+                        if (!AppCommon.IsOption(args[index]))
                         {
-                            _formName = args[index].Trim();
+                            _panelConfig = args[index].Trim();
                         }
-
                         break;
                 }
             }
         }
 
         /// <summary>
-        /// Checks if the specified string is an option flag.
-        /// it should start with a - or a /
+        /// Disable mapping for commands that are not supported by this
+        /// app, and cannot be triggerd by an actuator switch
         /// </summary>
-        /// <param name="arg">arg to check</param>
-        /// <returns>true if it is</returns>
-        private static bool isOption(String arg)
+        private static void setSwitchMapCommands()
         {
-            if (!String.IsNullOrEmpty(arg))
-            {
-                return (arg[0] == '/' || arg[0] == '-');
-            }
+            string[] commands = {
+                "CmdToolsMenu",
+                "CmdSwitchWindows",
+                "CmdSwitchApps",
+                "CmdFileBrowserFileOpen",
+                "CmdLaunchApp",
+                "CmdContextMenu",
+                "CmdMainMenu",
+                "CmdTalkWindowToggle",
+                "CmdTalkWindowShow",
+                "CmdTalkWindowClose",
+                "CmdTalkApp",
+                "CmdAutoPositionScanner",
+                "CmdPositionScannerTopRight",
+                "CmdPositionScannerTopLeft",
+                "CmdPositionScannerBottomRight",
+                "CmdPositionScannerBottomLeft",
+                "CmdAutoPositionScanner",
+                "CmdWindowPosSizeMenu"
+            };
 
-            return false;
+            CommandManager.Instance.AppCommandTable.SetEnableSwitchMap(commands, false);
         }
     }
 }

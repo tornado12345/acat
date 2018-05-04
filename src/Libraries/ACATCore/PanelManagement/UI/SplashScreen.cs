@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="SplashScreen.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,47 +18,10 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Drawing;
-using System.Runtime.InteropServices;
-using System.Windows.Forms;
 using ACAT.Lib.Core.Utility;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Drawing;
+using System.Windows.Forms;
 
 namespace ACAT.Lib.Core.PanelManagement
 {
@@ -90,22 +53,24 @@ namespace ACAT.Lib.Core.PanelManagement
         /// <param name="line1">First line</param>
         /// <param name="line2">Second line</param>
         /// <param name="line3">Third line</param>
+        /// <param name="line4">Fourth line</param>
         /// <param name="image">Path to bitmap</param>
-        public SplashScreen(String line1, String line2, String line3, String image)
+        public SplashScreen(String line1, String line2, String line3, String line4, String image)
         {
             InitializeComponent();
 
-            this.line1.Text = line1;
-            this.line2.Text = line2;
-            this.line3.Text = line3;
+            this.labelLine1.Text = line1;
+            this.labelLine2.Text = line2;
+            this.labelLine3.Text = line3;
+            this.labelLine4.Text = line4;
 
-            Windows.SetWindowPosition(this, Windows.WindowPosition.CenterScreen);
+            Windows.SetWindowPosition(this, Windows.WindowPosition.BottomRight);
 
             try
             {
                 var img = Image.FromFile(image);
                 var bitmap = ImageUtils.ImageOpacity(img, 1.0F, new Rectangle(0, 0, img.Width, img.Height));
-                splashPictureBox.Image = bitmap;
+                splashPictureBox.BackgroundImage = bitmap;
             }
             catch
             {
@@ -132,22 +97,10 @@ namespace ACAT.Lib.Core.PanelManagement
         {
             stopTimer();
 
-            //Windows.CloseForm(this);
+            Windows.CloseForm(this);
+
             DialogResult = DialogResult.Yes;
         }
-
-        [DllImport("Gdi32.dll", EntryPoint = "CreateRoundRectRgn")]
-        private static extern IntPtr CreateRoundRectRgn(
-            int leftRect, // x-coordinate of upper-left corner
-            int topRect, // y-coordinate of upper-left corner
-            int rightRect, // x-coordinate of lower-right corner
-            int bottomRect, // y-coordinate of lower-right corner
-            int widthEllipse, // height of ellipse
-            int heightEllipse);
-
-        [DllImport("gdi32.dll", EntryPoint = "DeleteObject")]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool DeleteObject([In] IntPtr handle);
 
         /// <summary>
         /// Timer proc
@@ -182,13 +135,6 @@ namespace ACAT.Lib.Core.PanelManagement
         /// <param name="e">event args</param>
         private void SplashScreen_Load(object sender, EventArgs e)
         {
-            IntPtr handle = CreateRoundRectRgn(0, 0, Width, Height, 15, 15);
-            if (handle != IntPtr.Zero)
-            {
-                Region = Region.FromHrgn(handle);
-                DeleteObject(handle);
-            }
-
             startTimer();
         }
 
@@ -219,8 +165,14 @@ namespace ACAT.Lib.Core.PanelManagement
         /// </summary>
         private void stopTimer()
         {
-            _timer.Tick -= _timer_Tick;
-            _timer.Stop();
+            try
+            {
+                _timer.Tick -= _timer_Tick;
+                _timer.Stop();
+            }
+            catch
+            {
+            }
         }
     }
 }

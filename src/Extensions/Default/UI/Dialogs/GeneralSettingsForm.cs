@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////
 // <copyright file="GeneralSettingsForm.cs" company="Intel Corporation">
 //
-// Copyright (c) 2013-2015 Intel Corporation 
+// Copyright (c) 2013-2017 Intel Corporation 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,51 +18,16 @@
 // </copyright>
 ////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Security.Permissions;
-using System.Windows.Forms;
+using ACAT.ACATResources;
 using ACAT.Lib.Core.PanelManagement;
 using ACAT.Lib.Core.Utility;
 using ACAT.Lib.Core.WidgetManagement;
 using ACAT.Lib.Core.Widgets;
 using ACAT.Lib.Extension;
-
-#region SupressStyleCopWarnings
-
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1126:PrefixCallsCorrectly",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1101:PrefixLocalCallsWithThis",
-        Scope = "namespace",
-        Justification = "Not needed. ACAT naming conventions takes care of this")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.ReadabilityRules",
-        "SA1121:UseBuiltInTypeAlias",
-        Scope = "namespace",
-        Justification = "Since they are just aliases, it doesn't really matter")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.DocumentationRules",
-        "SA1200:UsingDirectivesMustBePlacedWithinNamespace",
-        Scope = "namespace",
-        Justification = "ACAT guidelines")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1309:FieldNamesMustNotBeginWithUnderscore",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private fields begin with an underscore")]
-[module: SuppressMessage(
-        "StyleCop.CSharp.NamingRules",
-        "SA1300:ElementMustBeginWithUpperCaseLetter",
-        Scope = "namespace",
-        Justification = "ACAT guidelines. Private/Protected methods begin with lowercase")]
-
-#endregion SupressStyleCopWarnings
+using System;
+using System.Collections.Generic;
+using System.Security.Permissions;
+using System.Windows.Forms;
 
 namespace ACAT.Extensions.Default.UI.Dialogs
 {
@@ -79,7 +44,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// <summary>
         /// The dialogCommon object
         /// </summary>
-        private readonly DialogCommon _dialogCommon;
+        private DialogCommon _dialogCommon;
 
         /// <summary>
         /// Did the user change any setting?
@@ -93,15 +58,6 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         {
             InitializeComponent();
 
-            _dialogCommon = new DialogCommon(this);
-
-            if (!_dialogCommon.Initialize())
-            {
-                Log.Debug("Initialization error");
-            }
-
-            initWidgetSettings(Common.AppPreferences);
-
             Load += GeneralSettingsForm_Load;
             FormClosing += GeneralSettingsForm_FormClosing;
         }
@@ -113,6 +69,11 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         {
             get { return DescriptorAttribute.GetDescriptor(GetType()); }
         }
+
+        /// <summary>
+        /// Gets the PanelCommon object
+        /// </summary>
+        public IPanelCommon PanelCommon { get { return _dialogCommon; } }
 
         /// <summary>
         /// Gets the synch object for the scanner
@@ -134,6 +95,25 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         }
 
         /// <summary>
+        /// Intitializes the class
+        /// </summary>
+        /// <param name="startupArg">startup param</param>
+        /// <returns>true on success</returns>
+        public bool Initialize(StartupArg startupArg)
+        {
+            _dialogCommon = new DialogCommon(this);
+
+            bool retVal = _dialogCommon.Initialize(startupArg);
+
+            if (retVal)
+            {
+                initWidgetSettings(Common.AppPreferences);
+            }
+
+            return retVal;
+        }
+
+        /// <summary>
         /// Triggered when a widget is triggered. This handles all
         /// the buttons on the form - OK, cancel and restore defaults
         /// </summary>
@@ -149,7 +129,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
                 return;
             }
 
-            Invoke(new MethodInvoker(delegate()
+            Invoke(new MethodInvoker(delegate
             {
                 switch (value)
                 {
@@ -234,11 +214,13 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// </summary>
         private void GeneralSettingsForm_Load(object sender, EventArgs e)
         {
+            populateFormText();
+
             _dialogCommon.OnLoad();
 
             subscribeToEvents();
 
-            _dialogCommon.GetAnimationManager().Start(_dialogCommon.GetRootWidget());
+            PanelCommon.AnimationManager.Start(PanelCommon.RootWidget);
         }
 
         /// <summary>
@@ -251,23 +233,18 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         {
             var prefs = ACATPreferences.Load();
 
-            var rootWidget = _dialogCommon.GetRootWidget();
+            var rootWidget = PanelCommon.RootWidget;
 
-            prefs.EnableGlass = Common.AppPreferences.EnableGlass = (rootWidget.Finder.FindChild(pbShowGlass.Name) as CheckBoxWidget).GetState();
             prefs.HideScannerOnIdle = Common.AppPreferences.HideScannerOnIdle = (rootWidget.Finder.FindChild(pbHideScannersOnIdle.Name) as CheckBoxWidget).GetState();
             prefs.ExpandAbbreviationsOnSeparator = Common.AppPreferences.ExpandAbbreviationsOnSeparator = (rootWidget.Finder.FindChild(pbExpandAbbreviationsOnSeparator.Name) as CheckBoxWidget).GetState();
             prefs.ShowTalkWindowOnStartup = Common.AppPreferences.ShowTalkWindowOnStartup = (rootWidget.Finder.FindChild(pbShowTalkWindowOnStartup.Name) as CheckBoxWidget).GetState();
             prefs.RetainTalkWindowContentsOnHide = Common.AppPreferences.RetainTalkWindowContentsOnHide = (rootWidget.Finder.FindChild(pbRetainTalkWindowText.Name) as CheckBoxWidget).GetState();
-            prefs.DebugMessagesEnable = Common.AppPreferences.DebugMessagesEnable = (rootWidget.Finder.FindChild(pbEnableDebugTraceLogging.Name) as CheckBoxWidget).GetState();
-            prefs.AuditLogEnable = Common.AppPreferences.AuditLogEnable = (rootWidget.Finder.FindChild(pbEnableAuditLog.Name) as CheckBoxWidget).GetState();
             prefs.AutoSaveScannerLastPosition = Common.AppPreferences.AutoSaveScannerLastPosition = (rootWidget.Finder.FindChild(pbScannerAutoSaveLastPosition.Name) as CheckBoxWidget).GetState();
 
             if (Common.AppPreferences.AutoSaveScannerLastPosition)
             {
                 prefs.ScannerPosition = Common.AppPreferences.ScannerPosition = Context.AppWindowPosition;
             }
-
-            prefs.DebugLogMessagesToFile = Common.AppPreferences.DebugLogMessagesToFile = Common.AppPreferences.DebugMessagesEnable;
 
             return prefs;
         }
@@ -279,15 +256,12 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// <param name="prefs">ACAT Preferences</param>
         private void initWidgetSettings(ACATPreferences prefs)
         {
-            var rootWidget = _dialogCommon.GetRootWidget();
+            var rootWidget = PanelCommon.RootWidget;
 
             ((CheckBoxWidget)(rootWidget.Finder.FindChild(pbScannerAutoSaveLastPosition.Name))).SetState(prefs.AutoSaveScannerLastPosition);
             ((CheckBoxWidget)(rootWidget.Finder.FindChild(pbHideScannersOnIdle.Name))).SetState(prefs.HideScannerOnIdle);
-            ((CheckBoxWidget)(rootWidget.Finder.FindChild(pbShowGlass.Name))).SetState(prefs.EnableGlass);
             ((CheckBoxWidget)(rootWidget.Finder.FindChild(pbShowTalkWindowOnStartup.Name))).SetState(prefs.ShowTalkWindowOnStartup);
             ((CheckBoxWidget)(rootWidget.Finder.FindChild(pbRetainTalkWindowText.Name))).SetState(prefs.RetainTalkWindowContentsOnHide);
-            ((CheckBoxWidget)(rootWidget.Finder.FindChild(pbEnableDebugTraceLogging.Name))).SetState(prefs.DebugMessagesEnable);
-            ((CheckBoxWidget)(rootWidget.Finder.FindChild(pbEnableAuditLog.Name))).SetState(prefs.AuditLogEnable);
             ((CheckBoxWidget)(rootWidget.Finder.FindChild(pbExpandAbbreviationsOnSeparator.Name))).SetState(prefs.ExpandAbbreviationsOnSeparator);
         }
 
@@ -296,11 +270,24 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// </summary>
         private void loadDefaultSettings()
         {
-            if (DialogUtils.Confirm(this, "Restore default settings?"))
+            if (DialogUtils.Confirm(this, R.GetString("RestoreDefaultSettings")))
             {
                 initWidgetSettings(ACATPreferences.LoadDefaultSettings());
                 _isDirty = true;
             }
+        }
+
+        /// <summary>
+        /// Populate form controls text from Language resource
+        /// </summary>
+        private void populateFormText()
+        {
+            panelTitle.Text = R.GetString(panelTitle.Text);
+            lblScannerAutoSaveLastPosition.Text = R.GetString(lblScannerAutoSaveLastPosition.Text);
+            lblHideScannersOnIdle.Text = R.GetString(lblHideScannersOnIdle.Text);
+            lblShowTalkWindowOnStartup.Text = R.GetString(lblShowTalkWindowOnStartup.Text);
+            lblRetainTalkWindowText.Text = R.GetString(lblRetainTalkWindowText.Text);
+            lblExpandAbbreviationsOnSeparator.Text = R.GetString(lblExpandAbbreviationsOnSeparator.Text);
         }
 
         /// <summary>
@@ -312,7 +299,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
 
             if (_isDirty)
             {
-                if (!DialogUtils.Confirm(this, "Changes not saved. Quit?"))
+                if (!DialogUtils.Confirm(this, R.GetString("ChangesNotSavedQuit")))
                 {
                     quit = false;
                 }
@@ -329,11 +316,12 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         /// </summary>
         private void saveSettingsAndQuit()
         {
-            if (DialogUtils.Confirm(this, "Save settings?"))
+            if (DialogUtils.Confirm(this, R.GetString("SaveSettings")))
             {
                 getAppPreferencesFromUI().Save();
 
                 _isDirty = false;
+
                 Common.AppPreferences.NotifyPreferencesChanged();
             }
 
@@ -347,7 +335,7 @@ namespace ACAT.Extensions.Default.UI.Dialogs
         private void subscribeToEvents()
         {
             var widgetList = new List<Widget>();
-            _dialogCommon.GetRootWidget().Finder.FindAllButtons(widgetList);
+            PanelCommon.RootWidget.Finder.FindAllButtons(widgetList);
 
             foreach (var widget in widgetList)
             {
